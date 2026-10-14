@@ -481,17 +481,32 @@ body.car #help-main { font-size: 16px; }
 body.car #subtitle { bottom: calc(var(--ib) + 10px); left: calc(var(--cx) + var(--cw) / 2); width: var(--cw); }
 body.car #subtitle-avatar { width: 44px; height: 44px; }
 body.car #subtitle-text { font-size: 18px; }
-/* music: big, in the free middle of the info column */
-body.car #radio { left: var(--cx); width: min(var(--cw), 560px); top: calc(var(--it) + (100vh - var(--it) - var(--ib)) * 0.47); bottom: auto; transform: translateY(-50%); }
-body.car #radio { padding: 20px 22px; border-radius: 30px; column-gap: 22px; }
-body.car .radio-cover { width: clamp(110px, 24vh, 150px); height: clamp(110px, 24vh, 150px); border-radius: 20px; }
-body.car .radio-cover::after { font-size: 48px; }
-body.car #radio-title { font-size: 26px; }
-body.car #radio-artist { font-size: 18px; margin-top: 4px; }
-body.car .radio-ctrl { max-width: 280px; margin-top: 18px; }
-body.car .radio-btn { width: 60px; height: 54px; border-radius: 16px; }
-body.car .radio-btn svg { width: 36px; height: 36px; }
-body.car .radio-btn.main svg { width: 46px; height: 46px; }
+/* music on the car screen: Spotify-style "Now Playing" — cover on top, then title and
+   artist, then the controls with a round play button. Sits below the turn box. */
+body.car #radio {
+  --cover: min(200px, calc(100vh - var(--it) - var(--ib) - 350px));
+  top: calc(var(--it) + 158px); bottom: auto;
+  left: calc(var(--cx) + var(--cw) / 2); transform: translateX(-50%); width: auto;
+  grid-template-columns: var(--cover); grid-template-areas: "art" "text" "ctrl";
+  row-gap: 10px; padding: 14px 14px 10px; border-radius: 24px;
+}
+body.car .radio-cover { width: var(--cover); height: var(--cover); border-radius: 10px; box-shadow: 0 10px 24px rgba(0,0,0,.5); }
+body.car .radio-cover::after { font-size: 56px; }
+body.car #radio-title { font-size: 19px; font-weight: 700; }
+body.car #radio-artist { font-size: 14px; color: rgba(255,255,255,.7); }
+body.car .radio-ctrl { max-width: none; justify-content: space-between; margin-top: 0; }
+body.car .radio-btn svg { width: 28px; height: 28px; }
+body.car .radio-btn.main { width: 54px; height: 54px; border-radius: 50%; background: #fff; color: #121212; }
+body.car .radio-btn.main svg { width: 26px; height: 26px; }
+body.car .radio-btn.main:active { background: #e6e6e6; }
+/* short car screens: not enough height for the cover on top, go side by side */
+@media (max-height: 520px) {
+  body.car #radio {
+    --cover: 108px;
+    grid-template-columns: var(--cover) minmax(0, 260px); grid-template-areas: "art text" "art ctrl";
+    column-gap: 16px; row-gap: 6px; padding: 14px;
+  }
+}
 body.car #radio-banner { display: none !important; }
 body.car #mission-text, body.car #mission-title { left: var(--cx); right: auto; width: var(--cw); }
 body.car #zone { right: calc(100vw - var(--cx) - var(--cw)); bottom: calc(var(--ib) + 140px); }
