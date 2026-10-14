@@ -27,11 +27,15 @@ jobs:
       # Optional: point the app at your voice server (repo Settings > Variables > TTS_URL).
       - name: Configure voice server
         if: ${{ vars.TTS_URL != '' }}
-        run: sed -i "s#ttsUrl: ''#ttsUrl: '${{ vars.TTS_URL }}'#" web/config.js
+        env:
+          TTS_URL: ${{ vars.TTS_URL }}
+        run: |
+          sed -i "s#ttsUrl: ''#ttsUrl: '${TTS_URL}'#" web/config.js
 
       # Bust the service-worker cache on every deploy.
       - name: Stamp service worker version
-        run: sed -i "s#const VERSION = 'samaps-v1'#const VERSION = 'samaps-${GITHUB_SHA::8}'#" web/sw.js
+        run: |
+          sed -i "s#const VERSION = 'samaps-v1'#const VERSION = 'samaps-${GITHUB_SHA::8}'#" web/sw.js
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
