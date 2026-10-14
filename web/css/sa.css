@@ -444,7 +444,7 @@ body.has-radio:not(.car) #subtitle { bottom: calc(var(--sab) + 140px); }
 body.car #search-bar, body.car #results, body.car #fabs, body.car #briefing, body.car #nav-buttons,
 body.car #options, body.car #splash, body.car #car-banner, body.car #radio-connect { display: none !important; }
 body.car #hud { top: calc(var(--it) + 8px); right: calc(var(--ir) + 10px); transform: scale(.72); }
-body.car #infostack { top: calc(var(--it) + 10px); left: var(--cx); width: var(--stackw); }
+body.car #infostack { top: calc(var(--it) + 10px); left: var(--sx); width: var(--stackw); }
 body.car #help-main { font-size: 16px; }
 body.car #subtitle { bottom: calc(var(--ib) + 10px); left: calc(var(--cx) + var(--cw) / 2); width: var(--cw); }
 body.car.has-radio #subtitle { bottom: calc(var(--ib) + 76px); }
@@ -456,6 +456,6 @@ body.car #zone { right: calc(100vw - var(--cx) - var(--cw)); bottom: calc(var(--
 body.car #zone-name { font-size: 34px; }
 body.car #mission-big { font-size: clamp(32px, 7vw, 64px); }
 body.car .maplibregl-ctrl-bottom-left { left: var(--il); bottom: var(--ib); }
-/* map panel on the right third */
+/* map panel on the left third */
 body.car.car-panel #radar { inset: auto; left: var(--rx); top: var(--ry); width: var(--rw); height: var(--rh); }
 body.car.car-panel .maplibregl-ctrl-bottom-left { left: 0; bottom: 0; }

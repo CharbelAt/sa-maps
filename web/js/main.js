@@ -68,10 +68,10 @@ function layout() {
   const landscape = isCar || W > H * 1.15;
   // Car: Options > Android Auto layout. Phone: full-screen or classic radar.
   const carLayout = isCar ? settings.carLayout : null;
-  const circle = isCar ? carLayout !== 'panel-right' : settings.radarShape === 'circle';
+  const circle = isCar ? carLayout !== 'panel-left' : settings.radarShape === 'circle';
   body.classList.toggle('landscape', landscape);
   body.classList.toggle('radar-circle', circle);
-  body.classList.toggle('car-panel', carLayout === 'panel-right');
+  body.classList.toggle('car-panel', carLayout === 'panel-left');
   if (body.classList.contains('mode-browse')) return;
 
   // Android Auto reports the part of the screen its own UI doesn't cover (surface px).
@@ -126,35 +126,38 @@ function layout() {
 }
 
 /**
- * Android Auto screen, inside the area the host leaves free:
- *  left        - round radar bottom-left, info column on the right
- *  small-right - half-size round radar bottom-right, info column on the left
- *  panel-right - rectangular map filling the right third, info column on the left
+ * Android Auto screen, inside the area the host leaves free. The map is always on the
+ * left and the info (turn box, timers, crew, music) on the right:
+ *  left       - big round radar, bottom-left
+ *  small-left - half-size round radar, bottom-left; the turn box uses the space above it
+ *  panel-left - rectangular map filling the left third
  */
 function layoutCar(area, carLayout) {
   const s = document.body.style;
   const px = (v) => `${Math.round(v)}px`;
   const aw = area.right - area.left, ah = area.bottom - area.top;
-  let colX, colW, stackW;
-  if (carLayout === 'panel-right') {
-    const w = aw / 3, x = area.right - w;
-    s.setProperty('--rx', px(x)); s.setProperty('--ry', px(area.top));
+  const HUD_W = 215; // compact HUD in the top-right corner
+  let mapRight, stackX;
+  if (carLayout === 'panel-left') {
+    const w = aw / 3;
+    s.setProperty('--rx', px(area.left)); s.setProperty('--ry', px(area.top));
     s.setProperty('--rw', px(w)); s.setProperty('--rh', px(ah));
     radar.setView({ shape: 'full', safe: { left: 12, top: 12, right: w - 12, bottom: ah - 12 }, anchor: [w / 2, ah * 0.66] });
-    colX = area.left + 14; colW = x - colX - 14; stackW = Math.min(colW, 440);
+    mapRight = area.left + w;
+    stackX = mapRight + 14;
   } else {
     const base = Math.min(ah * 0.74, aw * 0.46);
-    const D = carLayout === 'small-right' ? base / 2 : base;
-    const x = carLayout === 'small-right' ? area.right - D - 16 : area.left + 16;
+    const D = carLayout === 'small-left' ? base / 2 : base;
+    const x = area.left + 16;
     s.setProperty('--D', px(D)); s.setProperty('--rx', px(x)); s.setProperty('--ry', px(area.bottom - D - 16));
     radar.setView({ shape: 'circle' });
-    if (carLayout === 'small-right') {
-      colX = area.left + 14; colW = x - colX - 14; stackW = Math.min(colW, area.right - 240 - colX, 440);
-    } else {
-      colX = x + D + 14; colW = area.right - colX - 12; stackW = colW - 215;
-    }
+    mapRight = x + D;
+    // the small radar only takes the bottom corner, so the turn box can start at the left edge
+    stackX = carLayout === 'small-left' ? area.left + 14 : mapRight + 14;
   }
-  s.setProperty('--cx', px(colX)); s.setProperty('--cw', px(colW)); s.setProperty('--stackw', px(stackW));
+  const colX = mapRight + 14, colW = area.right - colX - 12;
+  s.setProperty('--cx', px(colX)); s.setProperty('--cw', px(colW));
+  s.setProperty('--sx', px(stackX)); s.setProperty('--stackw', px(Math.min(area.right - HUD_W - stackX - 10, 460)));
   radar.resize();
 }
 
@@ -731,7 +734,7 @@ const OPTIONS = [
   { key: 'units', label: 'Units', options: [['metric', 'Metric'], ['imperial', 'Imperial']] },
   { key: 'routeColor', label: 'Route line', options: Object.keys(ROUTE_COLORS).map((k) => [k, k]) },
   { key: 'radarShape', label: 'Radar', options: [['full', 'Full screen'], ['circle', 'Classic radar']] },
-  { key: 'carLayout', label: 'Android Auto layout', options: [['left', 'Radar left'], ['small-right', 'Small radar right'], ['panel-right', 'Map panel right']] },
+  { key: 'carLayout', label: 'Android Auto layout', options: [['left', 'Big radar'], ['small-left', 'Small radar'], ['panel-left', 'Map panel']] },
   { key: 'music', label: 'Music controls', options: [[true, 'On'], [false, 'Off']] },
   { key: 'trackUp', label: 'Radar turns', options: [[true, 'With you'], [false, 'North up']] },
   { key: 'radarLabels', label: 'Street names on radar', options: [[false, 'Off'], [true, 'On']] },

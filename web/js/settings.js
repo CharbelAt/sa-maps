@@ -11,7 +11,7 @@ export const DEFAULTS = {
   routeColor: 'gold',    // gold | purple | red | green
   trackUp: true,         // radar rotates with heading
   radarShape: 'full',    // full (full-screen radar) | circle (classic minimap)
-  carLayout: 'left',     // Android Auto: left (radar bottom-left) | small-right | panel-right
+  carLayout: 'left',     // Android Auto: left (big radar) | small-left (half-size radar) | panel-left (map on the left third)
   music: true,           // music controls (Android app)
   radarLabels: false,    // street names on the radar (authentic = off)
   turf: true,            // gang turf tint over landuse
@@ -60,7 +60,13 @@ function merge(base, extra) {
 }
 
 const listeners = new Set();
-let settings = merge(DEFAULTS, load(SETTINGS_KEY, {}));
+const LEGACY_CAR_LAYOUT = { 'small-right': 'small-left', 'panel-right': 'panel-left' };
+const loadSettings = () => {
+  const s = merge(DEFAULTS, load(SETTINGS_KEY, {}));
+  s.carLayout = LEGACY_CAR_LAYOUT[s.carLayout] || s.carLayout;
+  return s;
+};
+let settings = loadSettings();
 
 export function getSettings() { return settings; }
 
@@ -79,7 +85,7 @@ export function onSettingsChange(fn) { listeners.add(fn); return () => listeners
 // screen is running): update in place so every module's reference stays valid.
 window.addEventListener('storage', (e) => {
   if (e.key !== SETTINGS_KEY) return;
-  const fresh = merge(DEFAULTS, load(SETTINGS_KEY, {}));
+  const fresh = loadSettings();
   for (const [k, v] of Object.entries(fresh)) {
     if (JSON.stringify(settings[k]) === JSON.stringify(v)) continue;
     settings[k] = v;
