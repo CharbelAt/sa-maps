@@ -11,6 +11,8 @@ export const DEFAULTS = {
   routeColor: 'gold',    // gold | purple | red | green
   trackUp: true,         // radar rotates with heading
   radarShape: 'full',    // full (full-screen radar) | circle (classic minimap)
+  carLayout: 'left',     // Android Auto: left (radar bottom-left) | small-right | panel-right
+  music: true,           // music controls (Android app)
   radarLabels: false,    // street names on the radar (authentic = off)
   turf: true,            // gang turf tint over landuse
   places: true,          // restaurants, shops, fuel... with names
@@ -72,6 +74,18 @@ export function setSetting(path, value) {
 }
 
 export function onSettingsChange(fn) { listeners.add(fn); return () => listeners.delete(fn); }
+
+// Another window of the app changed settings (e.g. Options on the phone while the car
+// screen is running): update in place so every module's reference stays valid.
+window.addEventListener('storage', (e) => {
+  if (e.key !== SETTINGS_KEY) return;
+  const fresh = merge(DEFAULTS, load(SETTINGS_KEY, {}));
+  for (const [k, v] of Object.entries(fresh)) {
+    if (JSON.stringify(settings[k]) === JSON.stringify(v)) continue;
+    settings[k] = v;
+    for (const fn of listeners) fn(k, v, settings);
+  }
+});
 
 // ---- Places -------------------------------------------------------------
 

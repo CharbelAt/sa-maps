@@ -7,7 +7,7 @@ const SHELL = [
   'vendor/maplibre-gl/maplibre-gl.js', 'vendor/maplibre-gl/maplibre-gl.css',
   'js/main.js', 'js/settings.js', 'js/mapstyle.js', 'js/radar.js', 'js/hud.js', 'js/nav.js',
   'js/instructions.js', 'js/geo.js', 'js/location.js', 'js/sim.js', 'js/crew.js', 'js/lines.js',
-  'js/voice.js', 'js/sfx.js', 'js/util.js', 'js/clips.js',
+  'js/voice.js', 'js/sfx.js', 'js/util.js', 'js/clips.js', 'js/media.js',
   'assets/app/icon-192.png', 'assets/app/favicon.svg',
   'assets/avatars/cj.svg', 'assets/avatars/smoke.svg',
   'assets/blips/player.svg', 'assets/blips/destination.svg', 'assets/blips/north.svg',

@@ -70,6 +70,68 @@ export async function search(q, near, signal) {
   return places.slice(0, 8);
 }
 
+// ---- place details (OpenStreetMap tags via Nominatim) -----------------------
+
+const NOMINATIM = 'https://nominatim.openstreetmap.org';
+const RELIGION = { christian: 'Church', muslim: 'Mosque', jewish: 'Synagogue', buddhist: 'Temple', hindu: 'Temple' };
+const pretty = (s) => String(s || '').replace(/_/g, ' ').replace(/;/g, ', ').trim();
+
+/** Human category like "Restaurant · Lebanese" from OSM tags. */
+export function categoryOf(tags = {}) {
+  if (tags.amenity === 'place_of_worship') return RELIGION[tags.religion] || 'Place of worship';
+  const kind = tags.amenity || tags.shop || tags.tourism || tags.leisure || tags.office || tags.healthcare
+    || tags.historic || tags.railway || tags.public_transport || '';
+  const base = pretty(kind === 'yes' ? '' : kind);
+  const cuisine = tags.cuisine ? pretty(tags.cuisine) : '';
+  const label = [base, cuisine].filter(Boolean).join(' · ');
+  return label ? label[0].toUpperCase() + label.slice(1) : '';
+}
+
+async function nominatim(path, signal) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 8000);
+  signal?.addEventListener('abort', () => ctrl.abort());
+  try {
+    const res = await fetch(`${NOMINATIM}${path}&format=jsonv2&extratags=1&namedetails=1&addressdetails=1&accept-language=en`, { signal: ctrl.signal });
+    return res.ok ? await res.json() : null;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+/**
+ * Looks up the OSM object for a place (the one at its coordinates, or by name close by)
+ * and returns {category, address, hours, phone, website, wheelchair} — whatever is mapped.
+ * One or two Nominatim requests per tap, well within its usage policy.
+ */
+export async function placeDetails(place, signal) {
+  const name = place.name && place.name !== 'Dropped pin' ? place.name : '';
+  const sameName = (hit) => !name || [hit?.name, ...Object.values(hit?.namedetails || {})].includes(name);
+  const POI = new Set(['amenity', 'shop', 'tourism', 'leisure', 'healthcare', 'office', 'historic', 'craft', 'club']);
+  const atSpot = await nominatim(`/reverse?lat=${place.lat}&lon=${place.lng}&zoom=18`, signal);
+  let hit = atSpot && !atSpot.error && sameName(atSpot) ? atSpot : null;
+  if (!hit && name) {
+    const d = 0.002; // ~200 m box around the place
+    const box = [place.lng - d, place.lat + d, place.lng + d, place.lat - d].map((v) => v.toFixed(5)).join(',');
+    hit = (await nominatim(`/search?q=${encodeURIComponent(name)}&viewbox=${box}&bounded=1&limit=1`, signal))?.[0];
+  }
+  // Names differ between sources (e.g. Arabic vs English): accept the business at that spot.
+  if (!hit && atSpot && !atSpot.error && POI.has(atSpot.category)) hit = atSpot;
+  if (!hit || hit.error) return null;
+  const t = { ...(hit.extratags || {}), [hit.category]: hit.type };
+  const a = hit.address || {};
+  const address = [[a.house_number, a.road].filter(Boolean).join(' '), a.suburb || a.neighbourhood, a.city || a.town]
+    .filter(Boolean).join(', ');
+  return {
+    category: categoryOf(t),
+    address,
+    hours: t.opening_hours || '',
+    phone: t.phone || t['contact:phone'] || '',
+    website: t.website || t['contact:website'] || t.url || '',
+    wheelchair: t.wheelchair || '',
+  };
+}
+
 export async function reverse(lng, lat) {
   try {
     const res = await fetch(`${PHOTON}/reverse?lat=${lat}&lon=${lng}&limit=1`);

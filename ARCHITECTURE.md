@@ -67,7 +67,7 @@ All arguments are strings/numbers/booleans; JSON is passed as a string.
 | `mediaState()` | JSON string of the phone's now-playing state (see `SA.onMedia`) or `"null"` |
 | `mediaCommand(cmd)` | `play`, `pause`, `toggle`, `next`, `prev` for the active media app (Spotify, YouTube Music, ...) |
 | `mediaAccess()` | `"granted"` / `"denied"` (notification-listener access, needed to see other apps' media sessions) |
-| `openMediaAccess()` | phone: opens the notification-access settings screen |
+| `openMediaAccess()` | phone: opens the notification-access settings screen (no-op from the car WebView) |
 
 ### Native -> JS: `window.SA` (defined by `web/js/main.js`)
 Native calls these with `evaluateJavascript`.
@@ -83,7 +83,7 @@ Native calls these with `evaluateJavascript`.
 | `SA.navigateTo(place)` | `{lat, lng, name, address?}` -> start navigation from current location |
 | `SA.getPlaces()` | returns JSON string `{home, work, favorites:[place], recents:[place]}` |
 | `SA.getState()` | returns JSON string of the latest NavState |
-| `SA.onMedia(state)` | `{package, app, title, artist, playing, art}` (art = small data URL or null), or `null` when nothing is playing |
+| `SA.onMedia(state)` | `{package, app, title, artist, playing, art}` (art = ~96 px `data:image/jpeg;base64,...` or null; title/artist may be null), or `null` when no media session is active or access is denied. Pushed to phone + car WebViews immediately on track/app/play-pause change and on `onWebReady`, other updates throttled to <= 2/s. |
 | `SA.ready` | `true` once initialized |
 
 ### NavState

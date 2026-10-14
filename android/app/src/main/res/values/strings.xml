@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SA Maps</string>
+    <string name="notif_channel_nav">Navigation</string>
+    <string name="notif_channel_nav_desc">Shown while SA Maps is guiding you, keeps GPS running with the screen off.</string>
+    <string name="notif_navigating_title">SA Maps — navigating</string>
+    <string name="notif_navigating_text">Follow the route, homie.</string>
+    <string name="car_search">Search</string>
+    <string name="car_places">Places</string>
+    <string name="car_end">End</string>
+    <string name="car_search_hint">Search a place or address</string>
+    <string name="car_places_title">Places</string>
+    <string name="car_places_saved">Saved</string>
+    <string name="car_places_recent">Recent</string>
+    <string name="car_places_none">No saved places yet. Add some on the phone.</string>
+    <string name="car_search_none">No results</string>
+    <string name="car_search_error">Search failed, check the connection</string>
+    <string name="car_home">Home</string>
+    <string name="car_work">Work</string>
+</resources>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated maneuver/action icon (original art). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+  <group android:scaleX="-1" android:pivotX="12">
+      <path android:pathData="M12,22 V15" android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="2.6" android:strokeLineCap="round" android:strokeLineJoin="round" />
+      <path android:pathData="M12,15 L7,10 V2" android:fillColor="#00000000" android:strokeColor="#80FFFFFF" android:strokeWidth="1.8" android:strokeLineCap="round" android:strokeLineJoin="round" />
+      <path android:pathData="M12,15 L17,10 V9" android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="2.6" android:strokeLineCap="round" android:strokeLineJoin="round" />
+      <path android:pathData="M17,2 L22.5,9.5 H11.5 Z" android:fillColor="#FFFFFFFF" android:fillType="nonZero" />
+  </group>
+</vector>

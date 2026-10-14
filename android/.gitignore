@@ -1,0 +1,19 @@
+# Gradle / Android build output
+build/
+.gradle/
+.kotlin/
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Generated copy of ../web (made by the syncWebAssets task)
+app/build/generated/webassets/
+
+# IDE
+*.iml
+.idea/
+.DS_Store
+
+# Locally built APKs
+dist/

@@ -50,9 +50,10 @@
     <button id="brief-close" class="icon-btn brief-close" aria-label="Close">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
     </button>
-    <div class="brief-kicker">Mission briefing</div>
+    <div class="brief-kicker"><img id="brief-icon" alt="" hidden><span id="brief-kind">Mission briefing</span></div>
     <h2 id="brief-title"></h2>
     <div id="brief-addr"></div>
+    <dl id="brief-details" hidden></dl>
     <div id="brief-stats"></div>
     <div class="brief-modes" role="radiogroup" aria-label="Travel mode">
       <button data-profile="car" role="radio">Greenwood</button>
@@ -110,6 +111,24 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="waves" d="M16 8.5a5 5 0 010 7M18.5 6a8.5 8.5 0 010 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="cross" d="M16 9l6 6M22 9l-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
     </button>
   </div>
+
+  <!-- Music (Android app: whatever is playing on the phone) -->
+  <div id="radio" hidden>
+    <img id="radio-art" alt="" hidden>
+    <div class="radio-text"><div id="radio-title"></div><div id="radio-artist"></div></div>
+    <button id="radio-prev" class="radio-btn" aria-label="Previous track">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2.5v14H6zM20 5v14L9.5 12z" fill="currentColor"/></svg>
+    </button>
+    <button id="radio-toggle" class="radio-btn main" aria-label="Play">
+      <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15L19.5 12z" fill="currentColor"/></svg>
+      <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h4.5v15H6zM13.5 4.5H18v15h-4.5z" fill="currentColor"/></svg>
+    </button>
+    <button id="radio-next" class="radio-btn" aria-label="Next track">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 5H18v14h-2.5zM4 5v14l10.5-7z" fill="currentColor"/></svg>
+    </button>
+  </div>
+  <button id="radio-connect" class="chip" hidden>♫ Connect Spotify / YouTube Music</button>
+  <div id="radio-banner" aria-hidden="true"></div>
 
   <div id="subtitle" aria-live="polite">
     <img id="subtitle-avatar" alt="">

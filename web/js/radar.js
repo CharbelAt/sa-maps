@@ -131,8 +131,13 @@ export class Radar extends EventTarget {
       const p = f.properties;
       const [lng, lat] = f.geometry.coordinates;
       const kind = String(p.subclass || p.class || '').replace(/_/g, ' ');
+      const img = f.layer?.layout?.['icon-image'];
+      const icon = String(img?.name ?? img ?? '').replace(/^poi-/, '') || 'generic';
       this.dispatchEvent(new CustomEvent('placeclick', {
-        detail: { lng, lat, name: p['name:latin'] || p.name || kind || 'Place', address: kind },
+        detail: {
+          lng, lat, name: p['name:latin'] || p.name || kind || 'Place', address: '',
+          icon, kindLabel: kind ? kind[0].toUpperCase() + kind.slice(1) : '',
+        },
       }));
     });
     map.on('mouseenter', 'poi', () => { map.getCanvas().style.cursor = 'pointer'; });

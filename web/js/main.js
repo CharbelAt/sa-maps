@@ -12,9 +12,10 @@ import { Crew, linesReady } from './crew.js';
 import { LocationProvider } from './location.js';
 import { Navigator, fetchRoute } from './nav.js';
 import { Simulator } from './sim.js';
-import { search, reverse } from './geo.js';
+import { search, reverse, placeDetails } from './geo.js';
 import { sfx, unlockAudio } from './sfx.js';
 import { CLIP_SLOTS, loadClips, setClip, clearClip, getClip } from './clips.js';
+import { Media } from './media.js';
 import {
   haversine, shortDistance, spokenDuration, shortDuration, clockTime, debounce,
 } from './util.js';
@@ -37,6 +38,7 @@ const loc = new LocationProvider();
 const nav = new Navigator();
 const sim = new Simulator(loc);
 const radar = new Radar(settings);
+const media = new Media({ getSettings, isCar });
 
 const state = {
   selected: null,
@@ -64,10 +66,12 @@ function layout() {
   const W = innerWidth, H = innerHeight;
   const body = document.body;
   const landscape = isCar || W > H * 1.15;
-  // Car: always the classic round radar on the left. Phone: user's choice.
-  const circle = isCar || settings.radarShape === 'circle';
+  // Car: Options > Android Auto layout. Phone: full-screen or classic radar.
+  const carLayout = isCar ? settings.carLayout : null;
+  const circle = isCar ? carLayout !== 'panel-right' : settings.radarShape === 'circle';
   body.classList.toggle('landscape', landscape);
   body.classList.toggle('radar-circle', circle);
+  body.classList.toggle('car-panel', carLayout === 'panel-right');
   if (body.classList.contains('mode-browse')) return;
 
   // Android Auto reports the part of the screen its own UI doesn't cover (surface px).
@@ -82,6 +86,8 @@ function layout() {
     const s = body.style;
     s.setProperty('--il', `${area.left}px`); s.setProperty('--it', `${area.top}px`);
     s.setProperty('--ir', `${W - area.right}px`); s.setProperty('--ib', `${H - area.bottom}px`);
+    layoutCar(area, carLayout);
+    return;
   }
 
   if (!circle) {
@@ -116,6 +122,39 @@ function layout() {
   body.style.setProperty('--D', `${Math.round(D)}px`);
   body.style.setProperty('--rx', `${Math.round(x)}px`);
   body.style.setProperty('--ry', `${Math.round(y)}px`);
+  radar.resize();
+}
+
+/**
+ * Android Auto screen, inside the area the host leaves free:
+ *  left        - round radar bottom-left, info column on the right
+ *  small-right - half-size round radar bottom-right, info column on the left
+ *  panel-right - rectangular map filling the right third, info column on the left
+ */
+function layoutCar(area, carLayout) {
+  const s = document.body.style;
+  const px = (v) => `${Math.round(v)}px`;
+  const aw = area.right - area.left, ah = area.bottom - area.top;
+  let colX, colW, stackW;
+  if (carLayout === 'panel-right') {
+    const w = aw / 3, x = area.right - w;
+    s.setProperty('--rx', px(x)); s.setProperty('--ry', px(area.top));
+    s.setProperty('--rw', px(w)); s.setProperty('--rh', px(ah));
+    radar.setView({ shape: 'full', safe: { left: 12, top: 12, right: w - 12, bottom: ah - 12 }, anchor: [w / 2, ah * 0.66] });
+    colX = area.left + 14; colW = x - colX - 14; stackW = Math.min(colW, 440);
+  } else {
+    const base = Math.min(ah * 0.74, aw * 0.46);
+    const D = carLayout === 'small-right' ? base / 2 : base;
+    const x = carLayout === 'small-right' ? area.right - D - 16 : area.left + 16;
+    s.setProperty('--D', px(D)); s.setProperty('--rx', px(x)); s.setProperty('--ry', px(area.bottom - D - 16));
+    radar.setView({ shape: 'circle' });
+    if (carLayout === 'small-right') {
+      colX = area.left + 14; colW = x - colX - 14; stackW = Math.min(colW, area.right - 240 - colX, 440);
+    } else {
+      colX = x + D + 14; colW = area.right - colX - 12; stackW = colW - 215;
+    }
+  }
+  s.setProperty('--cx', px(colX)); s.setProperty('--cw', px(colW)); s.setProperty('--stackw', px(stackW));
   radar.resize();
 }
 
@@ -527,6 +566,9 @@ function renderBriefing() {
   if (!p) return;
   $('brief-title').textContent = p.name;
   $('brief-addr').textContent = p.address || '';
+  $('brief-kind').textContent = p.kindLabel || 'Mission briefing';
+  $('brief-icon').hidden = !p.icon;
+  if (p.icon) $('brief-icon').src = `assets/poi/${p.icon}.svg`;
   $('btn-fav').classList.toggle('on', isFavorite(p));
   $('btn-fav').textContent = isFavorite(p) ? '★ Saved' : '★ Save';
   for (const b of document.querySelectorAll('.brief-modes button')) {
@@ -546,7 +588,48 @@ async function selectPlace(p) {
   renderBriefing();
   radar.addBlip('sel', [p.lng, p.lat], 'assets/blips/destination.svg');
   sfx.select();
+  loadDetails(p);
   await previewRoute();
+}
+
+// Hours, phone, website... from OpenStreetMap, filled in when they arrive.
+let detailsCtrl = null;
+async function loadDetails(p) {
+  const box = $('brief-details');
+  box.hidden = true;
+  box.replaceChildren();
+  detailsCtrl?.abort();
+  if (!p.name || p.name === 'Dropped pin' || p.kind === 'coords') return;
+  detailsCtrl = new AbortController();
+  let d = null;
+  try { d = await placeDetails(p, detailsCtrl.signal); } catch { return; }
+  if (state.selected !== p || !d) return;
+  if (d.category) $('brief-kind').textContent = d.category;
+  if (!p.address && d.address) $('brief-addr').textContent = d.address;
+  const site = /^https?:\/\//i.test(d.website) ? d.website : (d.website ? `https://${d.website}` : '');
+  const rows = [
+    ['Hours', d.hours.replace(/;\s*/g, ' · ')],
+    ['Phone', d.phone.split(';')[0], `tel:${d.phone.split(';')[0].replace(/[^\d+]/g, '')}`],
+    ['Website', site.replace(/^https?:\/\/(www\.)?/i, '').replace(/\/$/, ''), site],
+    ['Access', d.wheelchair === 'yes' ? 'Wheelchair accessible' : ''],
+  ];
+  for (const [label, value, href] of rows) {
+    if (!value) continue;
+    const dt = document.createElement('dt');
+    dt.textContent = label;
+    const dd = document.createElement('dd');
+    if (href) {
+      const a = document.createElement('a');
+      a.href = href;
+      a.textContent = value;
+      if (href.startsWith('http')) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+      dd.appendChild(a);
+    } else {
+      dd.textContent = value;
+    }
+    box.append(dt, dd);
+  }
+  box.hidden = !box.children.length;
 }
 
 async function previewRoute() {
@@ -648,6 +731,8 @@ const OPTIONS = [
   { key: 'units', label: 'Units', options: [['metric', 'Metric'], ['imperial', 'Imperial']] },
   { key: 'routeColor', label: 'Route line', options: Object.keys(ROUTE_COLORS).map((k) => [k, k]) },
   { key: 'radarShape', label: 'Radar', options: [['full', 'Full screen'], ['circle', 'Classic radar']] },
+  { key: 'carLayout', label: 'Android Auto layout', options: [['left', 'Radar left'], ['small-right', 'Small radar right'], ['panel-right', 'Map panel right']] },
+  { key: 'music', label: 'Music controls', options: [[true, 'On'], [false, 'Off']] },
   { key: 'trackUp', label: 'Radar turns', options: [[true, 'With you'], [false, 'North up']] },
   { key: 'radarLabels', label: 'Street names on radar', options: [[false, 'Off'], [true, 'On']] },
   { key: 'places', label: 'Places & names', options: [[true, 'On'], [false, 'Off']] },
@@ -773,7 +858,8 @@ for (const b of document.querySelectorAll('[data-test]')) {
 
 onSettingsChange((path) => {
   if (['turf', 'places', 'routeColor', 'trackUp', 'radarLabels'].includes(path)) radar.applySettings();
-  if (path === 'radarShape') { layout(); radar.applySettings(); }
+  if (path === 'radarShape' || path === 'carLayout') { layout(); radar.applySettings(); }
+  if (path === 'music') media.render();
   if (path.startsWith('voices')) voice.pushNativePrefs();
   if (path === 'crew') {
     document.body.classList.toggle('muted', settings.crew === 'mute');
@@ -788,6 +874,7 @@ window.SA = {
   ready: false,
   onNativeLocation: (l) => loc.pushNative(l),
   onTtsEvent: (id, ev) => voice.onNativeEvent(id, ev),
+  onMedia: (s) => media.update(s),
   setDisplayMode: (o) => {
     state.carActive = !!o?.carActive;
     document.body.classList.toggle('car-active', state.carActive && !isCar);
@@ -852,6 +939,7 @@ async function boot() {
 
   window.SA.ready = true;
   if (native) {
+    media.refresh();
     safe(() => window.SANative.onWebReady());
   } else if ('serviceWorker' in navigator && location.protocol === 'https:') {
     navigator.serviceWorker.register('sw.js').catch(() => {});

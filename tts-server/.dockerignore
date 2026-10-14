@@ -1,0 +1,7 @@
+node_modules
+models
+cache
+.env
+*.log
+.git
+*.md

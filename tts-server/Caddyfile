@@ -1,0 +1,25 @@
+# Caddy terminates HTTPS (automatic Let's Encrypt certificate for TTS_DOMAIN) and proxies
+# to the voice server. CORS headers come from the app itself, so nothing is added here.
+{$TTS_DOMAIN} {
+	# No `encode` directive on purpose: WAV must go out uncompressed so Content-Length and
+	# Range requests stay valid for the Android media player (JSON replies are tiny anyway).
+
+	# Only POST /v1/audio/speech has a body (small JSON).
+	request_body {
+		max_size 64KB
+	}
+
+	reverse_proxy tts:8787 {
+		transport http {
+			# Uncached phrases can wait behind others in the render queue.
+			response_header_timeout 90s
+		}
+	}
+
+	header -Server
+
+	log {
+		output stdout
+		format console
+	}
+}
