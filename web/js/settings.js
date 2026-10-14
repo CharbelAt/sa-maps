@@ -6,7 +6,6 @@ const STATS_KEY = 'samaps.stats.v1';
 
 export const DEFAULTS = {
   crew: 'both',          // both | cj | smoke | mute
-  chatty: 'normal',      // quiet | normal | hood
   clean: false,          // swap mild profanity
   units: 'metric',       // metric | imperial
   routeColor: 'gold',    // gold | purple | red | green
@@ -14,6 +13,7 @@ export const DEFAULTS = {
   radarShape: 'full',    // full (full-screen radar) | circle (classic minimap)
   radarLabels: false,    // street names on the radar (authentic = off)
   turf: true,            // gang turf tint over landuse
+  places: true,          // restaurants, shops, fuel... with names
   profile: 'car',        // car | bike | foot
   vehicle: 'Greenwood',
   routerUrl: '',         // custom OSRM base, e.g. https://osrm.example.com

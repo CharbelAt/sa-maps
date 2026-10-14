@@ -16,7 +16,7 @@ import { search, reverse } from './geo.js';
 import { sfx, unlockAudio } from './sfx.js';
 import { CLIP_SLOTS, loadClips, setClip, clearClip, getClip } from './clips.js';
 import {
-  haversine, shortDistance, spokenDistance, spokenDuration, shortDuration, clockTime, debounce,
+  haversine, shortDistance, spokenDuration, shortDuration, clockTime, debounce,
 } from './util.js';
 
 const $ = (id) => document.getElementById(id);
@@ -51,9 +51,6 @@ const state = {
   insets: { left: 0, top: 0, right: 0, bottom: 0 },
   zone: null,
   zoneCheckAt: 0,
-  foodCheckAt: 0,
-  foodSaid: new Set(),
-  straightSaid: new Set(),
   routeDrawAt: 0,
   navState: { navigating: false },
   navStateSentAt: 0,
@@ -66,26 +63,31 @@ const state = {
 function layout() {
   const W = innerWidth, H = innerHeight;
   const body = document.body;
-  const landscape = W > H * 1.15;
-  const circle = settings.radarShape === 'circle' && !isCar;
+  const landscape = isCar || W > H * 1.15;
+  // Car: always the classic round radar on the left. Phone: user's choice.
+  const circle = isCar || settings.radarShape === 'circle';
   body.classList.toggle('landscape', landscape);
   body.classList.toggle('radar-circle', circle);
   if (body.classList.contains('mode-browse')) return;
 
+  // Android Auto reports the part of the screen its own UI doesn't cover (surface px).
+  let area = { left: 0, top: 0, right: W, bottom: H };
+  if (isCar) {
+    const dpr = window.devicePixelRatio || 1;
+    const v = state.insets;
+    area = {
+      left: v.left / dpr, top: v.top / dpr,
+      right: v.right ? v.right / dpr : W, bottom: v.bottom ? v.bottom / dpr : H,
+    };
+    const s = body.style;
+    s.setProperty('--il', `${area.left}px`); s.setProperty('--it', `${area.top}px`);
+    s.setProperty('--ir', `${W - area.right}px`); s.setProperty('--ib', `${H - area.bottom}px`);
+  }
+
   if (!circle) {
     // Full-screen radar: player low in the frame so you see more road ahead.
     let safe;
-    if (isCar) {
-      // Visible-area rect from the Android Auto host, in surface px.
-      const dpr = window.devicePixelRatio || 1;
-      const v = state.insets;
-      const l = v.left / dpr, t = v.top / dpr;
-      const r = v.right ? v.right / dpr : W, b = v.bottom ? v.bottom / dpr : H;
-      safe = { left: l + 14, top: t + 14, right: r - 14, bottom: b - 14 };
-      const s = body.style;
-      s.setProperty('--il', `${l}px`); s.setProperty('--it', `${t}px`);
-      s.setProperty('--ir', `${W - r}px`); s.setProperty('--ib', `${H - b}px`);
-    } else if (landscape) {
+    if (landscape) {
       safe = { left: 18, top: 120, right: W - 18, bottom: H - 78 };
     } else {
       safe = { left: 16, top: 178, right: W - 16, bottom: H - 84 };
@@ -99,9 +101,11 @@ function layout() {
   radar.setView({ shape: 'circle' });
   let D, x, y;
   if (landscape) {
-    D = Math.min(H - 24, W * 0.56);
-    x = 12;
-    y = (H - D) / 2;
+    // Bottom-left corner, like the game's radar.
+    const aw = area.right - area.left, ah = area.bottom - area.top;
+    D = Math.min(ah * 0.74, aw * 0.46);
+    x = area.left + 16;
+    y = area.bottom - D - 16;
   } else {
     // Between the top cluster (help box / HUD) and the bottom buttons.
     const top = 170, bottom = H - 76;
@@ -173,10 +177,7 @@ function onFix(fix) {
   if (fix.source !== 'sim') {
     safe(() => localStorage.setItem(LAST_POS_KEY, JSON.stringify(p)));
   }
-  if (state.gpsLost) {
-    state.gpsLost = false;
-    if (nav.active) crew.event('gps_back');
-  }
+  state.gpsLost = false;
 
   let s = null;
   if (nav.active) s = nav.update(fix);
@@ -187,7 +188,7 @@ function onFix(fix) {
     if (radar.mode === 'browse' && !state.selected) radar.map.jumpTo({ center: p, zoom: 15 });
   }
 
-  if (s && nav.active) updateNavUi(s, fix);
+  if (s && nav.active) updateNavUi(s);
 
   // Zone name (SA shows the district when you enter it)
   if (radar.mode !== 'browse' && now - state.zoneCheckAt > 4000) {
@@ -204,7 +205,7 @@ function onFix(fix) {
   if (nav.active && nav.offRoute && !state.rerouting && now - state.lastRerouteAt > 10000) reroute(fix);
 }
 
-function updateNavUi(s, fix) {
+function updateNavUi(s) {
   const units = settings.units;
   const next = localize(s.next);
   localize(s.then);
@@ -221,25 +222,6 @@ function updateNavUi(s, fix) {
     radar.setRoute([s.snapped, ...nav.route.coords.slice(nav.idx + 1)]);
   }
   publishNavState(s);
-
-  // Chatter
-  const p = [fix.lng, fix.lat];
-  const secondsToNext = s.distToNext / Math.max(s.speed, 5);
-  if (now - state.foodCheckAt > 2000 && settings.chatty !== 'quiet') {
-    state.foodCheckAt = now;
-    const food = radar.nearbyFood(p);
-    if (food && !state.foodSaid.has(food.id) && !voice.busy) {
-      state.foodSaid.add(food.id);
-      crew.event('fast_food', { name: food.name });
-    }
-  }
-  if (next && s.distToNext > 3000 && s.speed > 10 && !state.straightSaid.has(next.index) && !voice.busy
-      && now - crew.lastTalk > 60000) {
-    state.straightSaid.add(next.index);
-    crew.event('long_straight', { dist: spokenDistance(s.distToNext, units) });
-  } else {
-    crew.maybeBanter(secondsToNext);
-  }
 }
 
 // ------------------------------------------------------------------ street names
@@ -290,14 +272,12 @@ nav.addEventListener('announce', (e) => {
 });
 nav.addEventListener('offroute', (e) => {
   hud.setWanted(1, true);
-  // Smoke's classic, then CJ deals with it.
-  if (settings.crew !== 'cj') crew.event('wrong_turn', {}, { speaker: 'smoke' });
-  crew.event('reroute', {}, { speaker: settings.crew === 'smoke' ? 'smoke' : 'cj' });
+  // Smoke's classic line (CJ-only mode gets a CJ line instead).
+  crew.event(settings.crew === 'cj' ? 'reroute' : 'wrong_turn', {}, { speaker: settings.crew === 'cj' ? 'cj' : 'smoke' });
   publishNavState(null, true);
   reroute(e.detail.fix);
 });
 nav.addEventListener('onroute', () => { hud.setWanted(0); publishNavState(null, true); });
-nav.addEventListener('arrivesoon', () => crew.event('arrive_soon', { dest: state.dest?.name }));
 nav.addEventListener('arrived', () => finishNav('passed'));
 
 async function reroute(fix) {
@@ -315,7 +295,6 @@ async function reroute(fix) {
     radar.setRoute(route.coords);
     hud.setWanted(0);
     sfx.cleared();
-    crew.event('rerouted', { time: spokenDuration(route.duration) });
     sim.follow(route);
   } catch (err) {
     hud.toast(`Reroute failed: ${err.message}`);
@@ -354,8 +333,6 @@ async function startNav(place, { route = null, test = false } = {}) {
   }
   if (sim.running) sim.stop();
   state.dest = place;
-  state.foodSaid.clear();
-  state.straightSaid.clear();
   state.zone = null;
   addRecent(place);
   closeBriefing();
@@ -369,12 +346,9 @@ async function startNav(place, { route = null, test = false } = {}) {
   setTimeout(() => { if (state.dest) hud.zone(radar.zoneName(from), settings.vehicle); }, 4600);
   sfx.start();
 
+  // The mission title card does the intro; the crew just gives the first direction.
   await linesReady;
-  voice.stop(); // drop any idle chatter
-  crew.event('start', { dest: place.name, dist: spokenDistance(route.total, settings.units), time: spokenDuration(route.duration) });
-  const hour = new Date().getHours();
-  if (route.duration > 3600) crew.event('long_trip', { time: spokenDuration(route.duration) });
-  else if (hour >= 22 || hour < 5) crew.event('night_drive');
+  voice.stop();
   const depart = route.steps[0];
   if (depart?.action) crew.instruction('now', speakable({ ...depart, index: 0 }), { distance: 0, then: null, units: settings.units, dest: place.name, priority: 2 });
 
@@ -521,6 +495,7 @@ $('btn-clear').addEventListener('click', () => {
   showResults([]);
   closeBriefing();
 });
+radar.addEventListener('placeclick', (e) => selectPlace(e.detail));
 radar.addEventListener('longpress', async (e) => {
   if (radar.mode !== 'browse') return;
   const { lng, lat } = e.detail;
@@ -531,6 +506,14 @@ radar.addEventListener('longpress', async (e) => {
     renderBriefing();
   }
 });
+
+const compass = $('btn-compass');
+compass.addEventListener('click', () => radar.map.easeTo({ bearing: 0, duration: 400 }));
+function updateCompass() {
+  const b = radar.map.getBearing();
+  compass.hidden = Math.abs(b) < 0.5;
+  compass.firstElementChild.style.transform = `rotate(${-b}deg)`;
+}
 
 $('btn-locate').addEventListener('click', () => {
   if (!loc.last) { hud.toast(loc.error ? 'Location is blocked — allow it in the browser' : 'Waiting for GPS…'); loc.start(); return; }
@@ -661,14 +644,14 @@ function toggleMute() {
 
 const OPTIONS = [
   { key: 'crew', label: 'Crew', options: [['both', 'CJ + Smoke'], ['cj', 'CJ only'], ['smoke', 'Smoke only'], ['mute', 'Subtitles']] },
-  { key: 'chatty', label: 'Chatter', options: [['quiet', 'Directions'], ['normal', 'Normal'], ['hood', 'Hood mode']] },
   { key: 'clean', label: 'Language', options: [[false, 'Uncut'], [true, 'Clean']] },
   { key: 'units', label: 'Units', options: [['metric', 'Metric'], ['imperial', 'Imperial']] },
   { key: 'routeColor', label: 'Route line', options: Object.keys(ROUTE_COLORS).map((k) => [k, k]) },
   { key: 'radarShape', label: 'Radar', options: [['full', 'Full screen'], ['circle', 'Classic radar']] },
   { key: 'trackUp', label: 'Radar turns', options: [[true, 'With you'], [false, 'North up']] },
   { key: 'radarLabels', label: 'Street names on radar', options: [[false, 'Off'], [true, 'On']] },
-  { key: 'turf', label: 'Gang turf', options: [[true, 'On'], [false, 'Off']] },
+  { key: 'places', label: 'Places & names', options: [[true, 'On'], [false, 'Off']] },
+  { key: 'turf', label: 'Gang turf colors', options: [[true, 'On'], [false, 'Off']] },
   { key: 'vehicle', label: 'Your ride', type: 'text', placeholder: 'Greenwood' },
   { key: 'voiceEngine', label: 'Voices', options: [['neural', 'Neural'], ['device', 'Device']] },
   { key: 'ttsUrl', label: 'Voice server', type: 'text', placeholder: 'https://your-vps (tts-server)' },
@@ -789,7 +772,7 @@ for (const b of document.querySelectorAll('[data-test]')) {
 }
 
 onSettingsChange((path) => {
-  if (['turf', 'routeColor', 'trackUp', 'radarLabels'].includes(path)) radar.applySettings();
+  if (['turf', 'places', 'routeColor', 'trackUp', 'radarLabels'].includes(path)) radar.applySettings();
   if (path === 'radarShape') { layout(); radar.applySettings(); }
   if (path.startsWith('voices')) voice.pushNativePrefs();
   if (path === 'crew') {
@@ -846,12 +829,10 @@ async function boot() {
   setUiMode(isCar ? 'nav' : 'browse');
   if (!native) {
     $('splash').hidden = false;
-    $('splash-start').addEventListener('click', async () => {
+    $('splash-start').addEventListener('click', () => {
       unlockAudio();
       $('splash').hidden = true;
       loc.start();
-      await linesReady;
-      crew.event('welcome');
     }, { once: true });
   }
   idleMoney();
@@ -865,6 +846,7 @@ async function boot() {
   const last = safe(() => JSON.parse(localStorage.getItem(LAST_POS_KEY)), null);
   await radar.init(Array.isArray(last) ? last : DEFAULT_CENTER);
   if (Array.isArray(last) && !state.dest) radar.map.jumpTo({ center: last, zoom: 14 });
+  radar.map.on('rotate', updateCompass);
   refreshPlaceBlips();
   layout();
 

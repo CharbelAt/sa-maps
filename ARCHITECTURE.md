@@ -64,6 +64,10 @@ All arguments are strings/numbers/booleans; JSON is passed as a string.
 | `sendToCar(json)` | place JSON; native forwards to the car WebView's `SA.navigateTo`. Returns `"ok"` or `"no-car"` |
 | `setKeepScreenOn(bool)` | phone only |
 | `log(msg)` | logcat |
+| `mediaState()` | JSON string of the phone's now-playing state (see `SA.onMedia`) or `"null"` |
+| `mediaCommand(cmd)` | `play`, `pause`, `toggle`, `next`, `prev` for the active media app (Spotify, YouTube Music, ...) |
+| `mediaAccess()` | `"granted"` / `"denied"` (notification-listener access, needed to see other apps' media sessions) |
+| `openMediaAccess()` | phone: opens the notification-access settings screen |
 
 ### Native -> JS: `window.SA` (defined by `web/js/main.js`)
 Native calls these with `evaluateJavascript`.
@@ -79,6 +83,7 @@ Native calls these with `evaluateJavascript`.
 | `SA.navigateTo(place)` | `{lat, lng, name, address?}` -> start navigation from current location |
 | `SA.getPlaces()` | returns JSON string `{home, work, favorites:[place], recents:[place]}` |
 | `SA.getState()` | returns JSON string of the latest NavState |
+| `SA.onMedia(state)` | `{package, app, title, artist, playing, art}` (art = small data URL or null), or `null` when nothing is playing |
 | `SA.ready` | `true` once initialized |
 
 ### NavState

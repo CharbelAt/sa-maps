@@ -41,10 +41,11 @@
   --rx: 0px;
   --ry: 0px;
   --it: 0px; --ir: 0px; --ib: 0px; --il: 0px; /* car visible-area insets */
-  --sat: env(safe-area-inset-top, 0px);
-  --sab: env(safe-area-inset-bottom, 0px);
-  --sal: env(safe-area-inset-left, 0px);
-  --sar: env(safe-area-inset-right, 0px);
+  /* system bars: the Android app injects --sa-inset-*; browsers use env() */
+  --sat: var(--sa-inset-top, env(safe-area-inset-top, 0px));
+  --sab: var(--sa-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --sal: var(--sa-inset-left, env(safe-area-inset-left, 0px));
+  --sar: var(--sa-inset-right, env(safe-area-inset-right, 0px));
   color-scheme: dark;
 }
 
@@ -85,6 +86,9 @@ body.radar-circle:not(.mode-browse) #radar {
   box-shadow: 0 0 0 2px rgba(0,0,0,.6), 0 10px 30px rgba(0,0,0,.6);
 }
 body.radar-circle:not(.mode-browse) #radar-ring { display: block; }
+/* Black disc behind, map pulled in under the ring, so no map pixels leak at the rim. */
+body.radar-circle:not(.mode-browse) #radar { background: #000; }
+body.radar-circle:not(.mode-browse) #map { inset: calc(var(--D) * 0.02); border-radius: 50%; overflow: hidden; }
 body.radar-circle:not(.mode-browse) .maplibregl-ctrl-attrib { display: none; }
 
 /* Full-screen radar: same map, darkened edges like the radar's translucent rim */
@@ -399,7 +403,7 @@ body.mode-nav.landscape:not(.radar-circle) #infostack { width: min(42vw, 440px);
 /* Android Auto surface: the host draws its own maneuver card and buttons, so we
    only show the radar, a compact HUD and subtitles inside the visible area. */
 body.car #search-bar, body.car #results, body.car #fabs, body.car #briefing, body.car #nav-buttons,
-body.car #infostack, body.car #options, body.car #splash, body.car #car-banner { display: none !important; }
+body.car #options, body.car #splash, body.car #car-banner { display: none !important; }
 body.car #hud { top: calc(var(--it) + 8px); right: calc(var(--ir) + 10px); transform: scale(.72); }
 body.car #subtitle {
   bottom: calc(var(--ib) + 10px);
@@ -410,5 +414,8 @@ body.car #subtitle-avatar { width: 44px; height: 44px; }
 body.car #subtitle-text { font-size: 18px; }
 body.car #zone { right: calc(var(--ir) + 14px); bottom: calc(var(--ib) + 96px); }
 body.car #zone-name { font-size: 34px; }
-body.car #mission-text, body.car #mission-title { left: var(--il); right: var(--ir); }
+body.car #mission-text, body.car #mission-title { left: calc(var(--rx) + var(--D)); right: var(--ir); }
+body.car #infostack { top: calc(var(--it) + 10px); left: calc(var(--rx) + var(--D) + 14px); width: calc(100vw - var(--rx) - var(--D) - var(--ir) - 225px); }
+body.car #help-main { font-size: 16px; }
+body.car #mission-big { font-size: clamp(32px, 7vw, 64px); }
 body.car .maplibregl-ctrl-bottom-left { left: var(--il); bottom: var(--ib); }

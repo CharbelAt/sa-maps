@@ -111,7 +111,6 @@ export class Navigator extends EventTarget {
     this.offRoute = false;
     this.phases = new Map();
     this.arrived = false;
-    this.arriveSoonSaid = false;
   }
 
   get active() { return !!this.route && !this.arrived; }
@@ -220,9 +219,6 @@ export class Navigator extends EventTarget {
     if (!this.offRoute && (remaining < 20 || (remaining < 120 && destDist < 30))) {
       this.arrived = true;
       this.emit('arrived', state);
-    } else if (!this.arriveSoonSaid && remaining < 600 && remaining > 250 && r.total > 1500) {
-      this.arriveSoonSaid = true;
-      this.emit('arrivesoon', state);
     }
     return state;
   }

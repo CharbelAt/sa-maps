@@ -12,17 +12,22 @@ reading the directions. Works in the browser (installable PWA), as an Android ap
 
 ## What it does
 
-- **Full-screen SA radar** (or the classic round minimap, in Options): olive land, navy water, pale flat
-  roads, gang-turf tint (Grove green / Ballas purple / Vagos yellow), burger blips on fast food, a player
-  arrow, the north badge, and blips that stick to the edge of the screen when they're off it.
+- **Full-screen SA radar** on the phone (or the classic round minimap, in Options) and the **round
+  minimap on the left** on Android Auto: olive land, navy water, pale flat roads, a player arrow, the
+  north badge, and blips that stick to the edge when they're off-screen. Two-finger rotate, compass
+  button to snap back north.
+- **Places with names**: restaurants, cafés, fuel, pharmacies, banks, shops, mosques/churches, hotels,
+  parking, schools… as SA-style badges (Latin-script names where available). Tap one to start a mission.
+- **Gang turf colors** (optional): neighbourhoods tinted like SA's gang territories — residential =
+  Grove Street green, commercial = Ballas purple, industrial = Vagos yellow. Purely cosmetic.
+- **Search** stays in your country and lists the closest results first.
 - **SA HUD**: clock, the "weapon" slot shows the next turn + distance, health bar = trip progress, armor =
   battery, **$ money = metres left**, **wanted stars when you go off-route**, mission TIME/ETA boxes,
   the black help box with the next instruction, zone names in gothic letters as you enter districts.
 - **Missions**: picking a destination opens a *mission briefing*; arriving shows **MISSION PASSED!
   RESPECT +** and adds the distance to your lifetime money; ending early is *MISSION FAILED!*.
-- **CJ & Big Smoke**: ~840 original in-character lines + 38 banter exchanges. They alternate turns,
-  quip at each other, comment on long straights, and Smoke notices every burger joint you pass.
-  Take a wrong turn and Smoke reminds you that *all you had to do was follow the damn train, CJ!*
+- **CJ & Big Smoke** take turns reading the directions in short, original in-character lines — no idle
+  chatter. Take a wrong turn and Smoke reminds you that *all you had to do was follow the damn train, CJ!*
 - **Test drive**: simulates the whole route so you can try it from your desk.
 - Works anywhere OpenStreetMap has data (tested in Los Angeles and **Beirut** — non-Latin street names
   are swapped for their Latin names from the map so the voices can read them).
@@ -78,9 +83,9 @@ sent to the car.
 
 ## Options
 
-Crew (both / CJ / Smoke / subtitles only), chatter level (directions only → hood mode), clean
-language, units, route colour, full-screen vs classic radar, north-up, street names on radar, gang
-turf, your ride's name, voice server, device fallback voices, custom clips, custom OSRM server.
+Crew (both / CJ / Smoke / subtitles only), clean language, units, route colour, full-screen vs
+classic radar, north-up, street names on radar, places & names, gang turf colors, your ride's name,
+voice server, device fallback voices, custom clips, custom OSRM server.
 
 ## Credits
 

@@ -2,7 +2,7 @@
 // player and zooms out with speed (like the game), and blips that stick to the
 // radar rim when they're off-screen.
 
-import { buildStyle, LABEL_LAYERS } from './mapstyle.js';
+import { buildStyle, LABEL_LAYERS, POI_ICONS, POI_LAYER } from './mapstyle.js';
 import { ROUTE_COLORS } from './settings.js';
 import { angleDelta, clamp, haversine, lerp } from './util.js';
 
@@ -70,7 +70,6 @@ export class Radar extends EventTarget {
       fadeDuration: 0,
     });
     this.map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
-    this.map.touchZoomRotate.disableRotation();
 
     const playerEl = document.createElement('div');
     playerEl.className = 'player-blip';
@@ -89,6 +88,7 @@ export class Radar extends EventTarget {
       if (this.mode !== 'browse') this.refollowTimer = setTimeout(() => this.recenter(), 12000);
     };
     this.map.on('dragstart', stopFollow);
+    this.map.on('rotatestart', stopFollow);
     this.map.on('zoomstart', (e) => { if (e.originalEvent && this.mode !== 'browse') this.zoomBias = 0; stopFollow(e); });
 
     this.setupLongPress();
@@ -106,20 +106,37 @@ export class Radar extends EventTarget {
           layout: { 'line-cap': 'round', 'line-join': 'round' },
           paint: { 'line-color': ROUTE_COLORS[s.routeColor] || ROUTE_COLORS.gold, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 3, 16, 8, 18, 15] },
         }, 'label-road');
-        try {
-          this.map.addImage('blip-food', await loadSvgImage('assets/blips/food.svg', 48), { pixelRatio: 2 });
-          this.map.addLayer({
-            id: 'poi-food', type: 'symbol', source: 'omt', 'source-layer': 'poi', minzoom: 14,
-            filter: ['==', 'class', 'fast_food'],
-            layout: { 'icon-image': 'blip-food', 'icon-size': 1, 'icon-allow-overlap': false },
-          });
-        } catch { /* icon missing: skip food blips */ }
+        await this.addPlaces();
         this.ready = true;
         this.applyMode();
         this.loop();
         resolve();
       });
     });
+  }
+
+  /** Restaurants, shops, fuel, banks... as SA-style badges with their names. */
+  async addPlaces() {
+    const map = this.map;
+    await Promise.all(POI_ICONS.map(async (key) => {
+      try {
+        map.addImage(`poi-${key}`, await loadSvgImage(`assets/poi/${key}.svg`, 52), { pixelRatio: 2 });
+      } catch { /* icon file missing: that category just won't show */ }
+    }));
+    map.addLayer(POI_LAYER);
+    map.setLayoutProperty('poi', 'visibility', this.settings.places ? 'visible' : 'none');
+    map.on('click', 'poi', (e) => {
+      const f = e.features?.[0];
+      if (!f || this.mode !== 'browse') return;
+      const p = f.properties;
+      const [lng, lat] = f.geometry.coordinates;
+      const kind = String(p.subclass || p.class || '').replace(/_/g, ' ');
+      this.dispatchEvent(new CustomEvent('placeclick', {
+        detail: { lng, lat, name: p['name:latin'] || p.name || kind || 'Place', address: kind },
+      }));
+    });
+    map.on('mouseenter', 'poi', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'poi', () => { map.getCanvas().style.cursor = ''; });
   }
 
   setupLongPress() {
@@ -159,12 +176,11 @@ export class Radar extends EventTarget {
     this.north.el.hidden = !nav;
     if (nav) {
       this.following = true;
-      this.map.dragRotate.disable();
       // keep the attribution as the small (i) button while driving
       this.wrap.querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
     } else {
-      this.map.dragRotate.enable();
-      this.map.easeTo({ bearing: 0, padding: NO_PADDING, duration: 500 });
+      // leaving navigation: back to north-up (the user can rotate again with two fingers)
+      this.map.easeTo({ bearing: 0, padding: NO_PADDING, duration: 400 });
     }
     // container size changes with the mode
     requestAnimationFrame(() => this.map.resize());
@@ -174,6 +190,7 @@ export class Radar extends EventTarget {
   applySettings() {
     if (!this.ready) return;
     this.map.setLayoutProperty('turf', 'visibility', this.settings.turf ? 'visible' : 'none');
+    this.map.setLayoutProperty('poi', 'visibility', this.settings.places ? 'visible' : 'none');
     this.map.setPaintProperty('route-line', 'line-color', ROUTE_COLORS[this.settings.routeColor] || ROUTE_COLORS.gold);
     this.applyMode();
   }
@@ -402,18 +419,6 @@ export class Radar extends EventTarget {
       const p = f.properties;
       const latin = p['name:latin'] || p.name_int || p['name:en'];
       if (latin && !/[^\u0000-\u024F\u1E00-\u1EFF]/.test(latin)) return latin;
-    }
-    return null;
-  }
-
-  nearbyFood(lngLat, radius = 70) {
-    if (!this.ready || this.map.getZoom() < 14) return null;
-    const feats = this.map.querySourceFeatures('omt', { sourceLayer: 'poi', filter: ['==', 'class', 'fast_food'] });
-    for (const f of feats) {
-      if (f.geometry.type !== 'Point') continue;
-      if (haversine(lngLat, f.geometry.coordinates) < radius) {
-        return { id: `${f.properties.name || ''}@${f.geometry.coordinates.map((v) => v.toFixed(4))}`, name: f.properties.name || '' };
-      }
     }
     return null;
   }

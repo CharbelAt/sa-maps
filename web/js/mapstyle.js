@@ -75,6 +75,62 @@ function roadLayers(brunnel) {
   return layers;
 }
 
+// Places (OpenMapTiles `poi` layer) -> icon file in assets/poi/<key>.svg
+export const POI_ICONS = [
+  'restaurant', 'fastfood', 'cafe', 'bar', 'fuel', 'hospital', 'pharmacy', 'health', 'bank', 'shop',
+  'grocery', 'clothes', 'hotel', 'parking', 'school', 'police', 'worship', 'gym', 'barber', 'car',
+  'cinema', 'park', 'transit', 'airport', 'attraction', 'generic',
+];
+const POI_SKIP = ['gate', 'lift_gate', 'bollard', 'toll_booth', 'brownfield', 'recycling', 'telephone',
+  'toilets', 'entrance', 'cemetery'];
+const POI_ICON = ['case',
+  ['in', ['get', 'subclass'], ['literal', ['fitness_centre', 'sports_centre', 'gym']]], 'gym',
+  ['match', ['get', 'class'],
+    'restaurant', 'restaurant',
+    'fast_food', 'fastfood',
+    ['cafe', 'bakery', 'ice_cream'], 'cafe',
+    ['bar', 'beer', 'alcohol_shop'], 'bar',
+    'fuel', 'fuel',
+    'hospital', 'hospital',
+    'pharmacy', 'pharmacy',
+    ['doctors', 'dentist', 'veterinary'], 'health',
+    ['bank', 'atm'], 'bank',
+    ['shop', 'butcher', 'jewelry', 'furniture'], 'shop',
+    'grocery', 'grocery',
+    'clothing_store', 'clothes',
+    'lodging', 'hotel',
+    ['parking', 'bicycle_parking'], 'parking',
+    ['school', 'college', 'library', 'kindergarten'], 'school',
+    ['police', 'fire_station'], 'police',
+    'place_of_worship', 'worship',
+    'hairdresser', 'barber',
+    ['car', 'bicycle', 'bicycle_rental'], 'car',
+    ['cinema', 'theatre', 'music'], 'cinema',
+    ['park', 'garden', 'playground', 'pitch', 'swimming_pool', 'stadium', 'golf'], 'park',
+    ['bus', 'railway', 'ferry_terminal', 'aerialway'], 'transit',
+    ['attraction', 'art_gallery', 'museum', 'castle', 'monument', 'zoo', 'town_hall'], 'attraction',
+    'generic'],
+];
+
+export const POI_LAYER = {
+  id: 'poi', type: 'symbol', source: 'omt', 'source-layer': 'poi', minzoom: 14,
+  filter: ['!', ['in', ['get', 'class'], ['literal', POI_SKIP]]],
+  layout: {
+    'icon-image': ['concat', 'poi-', POI_ICON],
+    'icon-size': ['interpolate', ['linear'], ['zoom'], 14, 0.72, 17, 1],
+    'icon-padding': 1,
+    'symbol-sort-key': ['coalesce', ['get', 'rank'], 99],
+    'text-field': ['step', ['zoom'], '', 15.2, ['coalesce', ['get', 'name:latin'], ['get', 'name']]],
+    'text-font': ['Noto Sans Bold'],
+    'text-size': ['interpolate', ['linear'], ['zoom'], 15, 10, 18, 12.5],
+    'text-offset': [0, 1.05],
+    'text-anchor': 'top',
+    'text-max-width': 8,
+    'text-optional': true,
+  },
+  paint: { 'text-color': '#ffffff', 'text-halo-color': '#111111', 'text-halo-width': 1.4 },
+};
+
 export function buildStyle({ labels = true, turf = true } = {}) {
   const vis = (on) => (on ? 'visible' : 'none');
   return {
