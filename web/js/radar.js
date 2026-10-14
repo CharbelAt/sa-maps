@@ -58,6 +58,11 @@ export class Radar extends EventTarget {
 
   init(center) {
     const s = this.settings;
+    // Arabic (and other right-to-left) labels need this to be joined and ordered correctly.
+    if (maplibregl.getRTLTextPluginStatus?.() === 'unavailable') {
+      maplibregl.setRTLTextPlugin(new URL('vendor/rtl-text/mapbox-gl-rtl-text.js', location.href).href, true)
+        ?.catch?.(() => { /* labels still render, just unshaped */ });
+    }
     this.map = new maplibregl.Map({
       container: 'map',
       style: buildStyle({ labels: true, turf: s.turf }),

@@ -411,22 +411,33 @@ body.mode-nav.landscape:not(.radar-circle) #infostack { width: min(42vw, 440px);
 
 /* ---------------------------------------------------------------- music ------ */
 
+/* Styled like SA's radio station name: big gothic title, no "app" chrome. */
 #radio {
   position: fixed; z-index: 15;
-  left: 50%; transform: translateX(-50%); bottom: calc(var(--sab) + 76px); width: min(94vw, 440px);
-  display: flex; align-items: center; gap: 8px; padding: 6px 8px;
-  background: rgba(0,0,0,.8); border: 2px solid #000; box-shadow: inset 0 0 0 1px var(--line), 0 4px 14px rgba(0,0,0,.5);
+  left: 50%; transform: translateX(-50%); bottom: calc(var(--sab) + 72px); width: min(94vw, 460px);
+  display: grid; grid-template-columns: auto 1fr; grid-template-areas: "art text" "art ctrl";
+  column-gap: 12px; align-items: center; text-align: center;
 }
-#radio-art { width: 40px; height: 40px; object-fit: cover; border: 1px solid #000; flex: none; }
-.radio-text { flex: 1; min-width: 0; }
-#radio-title { font-weight: 700; font-size: 14px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#radio-artist { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#radio-art { grid-area: art; width: 56px; height: 56px; object-fit: cover; border: 2px solid #000; box-shadow: 0 2px 8px rgba(0,0,0,.6); }
+#radio-art[hidden] + .radio-text, #radio-art[hidden] ~ .radio-ctrl { grid-column: 1 / -1; }
+.radio-text { grid-area: text; min-width: 0; }
+#radio-title {
+  font-family: var(--f-goth); font-size: 28px; line-height: 1.05; color: #9ec3ef; text-shadow: var(--outline);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#radio-artist {
+  font-weight: 700; font-size: 13px; color: #e6e6e6; text-shadow: var(--outline-thin); margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.radio-ctrl { grid-area: ctrl; display: flex; justify-content: center; gap: 18px; margin-top: 4px; }
 .radio-btn {
-  width: 40px; height: 40px; border-radius: 50%; flex: none; display: grid; place-items: center;
-  background: rgba(255,255,255,.08); border: 1px solid var(--line); color: #fff;
+  width: 44px; height: 40px; display: grid; place-items: center; padding: 0;
+  background: none; border: 0; color: #fff;
+  filter: drop-shadow(1.5px 0 0 #000) drop-shadow(-1.5px 0 0 #000) drop-shadow(0 1.5px 0 #000) drop-shadow(0 -1.5px 0 #000);
 }
-.radio-btn svg { width: 20px; height: 20px; }
-.radio-btn.main { background: var(--money); border-color: #000; }
+.radio-btn svg { width: 24px; height: 24px; }
+.radio-btn.main svg { width: 30px; height: 30px; }
+.radio-btn:active { transform: scale(.92); }
 #radio-toggle .i-pause, #radio-toggle.playing .i-play { display: none; }
 #radio-toggle.playing .i-pause { display: block; }
 #radio-connect { position: fixed; z-index: 15; left: 50%; transform: translateX(-50%); bottom: calc(var(--sab) + 76px); background: rgba(0,0,0,.8); }
@@ -437,7 +448,7 @@ body.mode-nav.landscape:not(.radar-circle) #infostack { width: min(42vw, 440px);
 }
 #radio-banner.show { opacity: 1; }
 body.mode-browse #radio, body.mode-browse #radio-connect, body.mode-browse #radio-banner { display: none !important; }
-body.has-radio:not(.car) #subtitle { bottom: calc(var(--sab) + 140px); }
+body.has-radio:not(.car) #subtitle { bottom: calc(var(--sab) + 158px); }
 
 /* Android Auto surface: radar (round or a panel) + an info column inside the area the
    host leaves free (--cx/--cw set by layoutCar). */
@@ -447,11 +458,15 @@ body.car #hud { top: calc(var(--it) + 8px); right: calc(var(--ir) + 10px); trans
 body.car #infostack { top: calc(var(--it) + 10px); left: var(--sx); width: var(--stackw); }
 body.car #help-main { font-size: 16px; }
 body.car #subtitle { bottom: calc(var(--ib) + 10px); left: calc(var(--cx) + var(--cw) / 2); width: var(--cw); }
-body.car.has-radio #subtitle { bottom: calc(var(--ib) + 76px); }
 body.car #subtitle-avatar { width: 44px; height: 44px; }
 body.car #subtitle-text { font-size: 18px; }
-body.car #radio { left: var(--cx); transform: none; width: min(var(--cw), 460px); bottom: calc(var(--ib) + 10px); }
-body.car #radio-banner, body.car #mission-text, body.car #mission-title { left: var(--cx); right: auto; width: var(--cw); }
+/* music: big, in the free middle of the info column */
+body.car #radio { left: var(--cx); width: min(var(--cw), 560px); top: calc(var(--it) + (100vh - var(--it) - var(--ib)) * 0.47); bottom: auto; transform: translateY(-50%); }
+body.car #radio-title { font-size: 38px; }
+body.car #radio-artist { font-size: 15px; }
+body.car #radio-art { width: 72px; height: 72px; }
+body.car #radio-banner { display: none !important; }
+body.car #mission-text, body.car #mission-title { left: var(--cx); right: auto; width: var(--cw); }
 body.car #zone { right: calc(100vw - var(--cx) - var(--cw)); bottom: calc(var(--ib) + 140px); }
 body.car #zone-name { font-size: 34px; }
 body.car #mission-big { font-size: clamp(32px, 7vw, 64px); }

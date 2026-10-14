@@ -4,7 +4,7 @@
 const VERSION = 'samaps-v1';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'config.js', 'css/sa.css',
-  'vendor/maplibre-gl/maplibre-gl.js', 'vendor/maplibre-gl/maplibre-gl.css',
+  'vendor/maplibre-gl/maplibre-gl.js', 'vendor/maplibre-gl/maplibre-gl.css', 'vendor/rtl-text/mapbox-gl-rtl-text.js',
   'js/main.js', 'js/settings.js', 'js/mapstyle.js', 'js/radar.js', 'js/hud.js', 'js/nav.js',
   'js/instructions.js', 'js/geo.js', 'js/location.js', 'js/sim.js', 'js/crew.js', 'js/lines.js',
   'js/voice.js', 'js/sfx.js', 'js/util.js', 'js/clips.js', 'js/media.js',
