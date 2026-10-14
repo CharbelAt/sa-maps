@@ -477,7 +477,16 @@ body.mode-nav.landscape:not(.radar-circle) #infostack { width: min(42vw, 440px);
   text-shadow: var(--outline); opacity: 0; transition: opacity .5s; overflow-wrap: anywhere;
 }
 #radio-banner.show { opacity: 1; }
-body.mode-browse #radio, body.mode-browse #radio-connect, body.mode-browse #radio-banner { display: none !important; }
+/* phone map screen: mini player bottom-left, next to the locate button */
+body.mode-browse #radio, body.mode-browse #radio-connect {
+  left: calc(var(--sal) + 10px); transform: none; bottom: calc(var(--sab) + 30px);
+  width: min(calc(100vw - var(--sal) - var(--sar) - 92px), 460px);
+}
+body.mode-browse #radio-connect { width: auto; }
+body.mode-browse.has-radio .maplibregl-ctrl-bottom-left { bottom: calc(var(--sab) + 178px); }
+body.mode-browse #radio-banner,
+body.has-briefing #radio, body.has-briefing #radio-connect,
+body.has-results #radio, body.has-results #radio-connect { display: none !important; }
 body.has-radio:not(.car) #subtitle { bottom: calc(var(--sab) + 158px); }
 
 /* Android Auto surface: radar (round or a panel) + an info column inside the area the
