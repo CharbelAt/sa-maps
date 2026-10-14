@@ -41,7 +41,7 @@ import kotlin.math.roundToInt
 object MediaHub {
     private const val TAG = "SAMaps/Media"
     private const val MIN_PUSH_INTERVAL_MS = 500L
-    private const val ART_SIZE_PX = 96
+    private const val ART_SIZE_PX = 256 // shown at ~84 css px on high-dpi car/phone screens
 
     private lateinit var app: Context
     private lateinit var component: ComponentName
@@ -340,7 +340,7 @@ object MediaHub {
         if (scaled !== src) scaled.recycle()
         if (src !== original) src.recycle()
         val out = ByteArrayOutputStream()
-        flat.compress(Bitmap.CompressFormat.JPEG, 72, out)
+        flat.compress(Bitmap.CompressFormat.JPEG, 82, out)
         flat.recycle()
         return "data:image/jpeg;base64," + Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
     }

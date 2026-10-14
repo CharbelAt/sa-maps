@@ -64,7 +64,9 @@ export class Media {
     this.el.title.textContent = s.title;
     this.el.artist.textContent = [s.artist, s.app].filter(Boolean).join(' · ');
     this.el.art.hidden = !s.art;
-    if (s.art) this.el.art.src = s.art;
+    if (s.art && this.el.art.src !== s.art) this.el.art.src = s.art;
+    // blurred copy of the cover tints the glass (data: URLs only, from the app)
+    this.el.box.style.setProperty('--art', s.art?.startsWith('data:image/') ? `url("${s.art}")` : 'none');
     this.el.toggle.classList.toggle('playing', !!s.playing);
     this.el.toggle.setAttribute('aria-label', s.playing ? 'Pause' : 'Play');
   }
