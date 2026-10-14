@@ -411,54 +411,63 @@ body.mode-nav.landscape:not(.radar-circle) #infostack { width: min(42vw, 440px);
 
 /* ---------------------------------------------------------------- music ------ */
 
-/* "Now playing" card — the one deliberately modern piece: frosted glass like iOS,
-   tinted by a blurred copy of the album art. */
+/* "Now playing" in SA style: black menu panel, framed cover, the song title in the
+   gothic radio-station lettering, play button like the HUD's weapon slot. */
 #radio {
   --art: none;
   position: fixed; z-index: 15; overflow: hidden; isolation: isolate;
-  left: 50%; transform: translateX(-50%); bottom: calc(var(--sab) + 72px); width: min(94vw, 440px);
+  left: 50%; transform: translateX(-50%); bottom: calc(var(--sab) + 72px); width: min(94vw, 460px);
   display: grid; grid-template-columns: auto 1fr; grid-template-areas: "art text" "art ctrl";
-  column-gap: 14px; align-items: center; padding: 12px;
-  border-radius: 22px;
-  background: rgba(40, 40, 46, 0.42);
-  -webkit-backdrop-filter: blur(26px) saturate(180%); backdrop-filter: blur(26px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.22);
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  color: #fff;
+  column-gap: 14px; align-items: center; padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.78);
+  border: 2px solid #000;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), 0 6px 24px rgba(0, 0, 0, 0.55);
+  font-family: var(--f-sub); color: #fff;
 }
+/* a faint wash of the cover's colors behind the panel */
 .radio-bg {
   position: absolute; inset: -40px; z-index: -1; pointer-events: none;
   background: var(--art) center / cover no-repeat;
-  filter: blur(34px) saturate(1.7); opacity: 0.55; transform: scale(1.1);
+  filter: blur(30px) saturate(1.5); opacity: 0.22;
 }
 .radio-cover {
-  grid-area: art; width: 64px; height: 64px; border-radius: 12px; overflow: hidden; flex: none;
-  background: linear-gradient(135deg, #5b5bd6, #e0557a);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  grid-area: art; width: 60px; height: 60px; overflow: hidden; flex: none;
+  background: #1c1f1a; border: 2px solid #000;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18), 0 6px 16px rgba(0, 0, 0, 0.6);
   display: grid; place-items: center;
 }
-.radio-cover::after { content: '♫'; font-size: 28px; color: rgba(255,255,255,.85); }
+.radio-cover::after { content: '♫'; font-size: 28px; color: var(--gold); text-shadow: var(--outline-thin); }
 .radio-cover:has(#radio-art:not([hidden]))::after { content: none; }
 #radio-art { width: 100%; height: 100%; object-fit: cover; display: block; }
 .radio-text { grid-area: text; min-width: 0; }
+#radio-station {
+  font-family: var(--f-price); text-transform: uppercase; letter-spacing: .08em; font-size: 12px;
+  color: var(--gold); text-shadow: var(--outline-thin);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 #radio-title {
-  font-size: 16px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.25;
+  font-family: var(--f-goth); font-size: 24px; line-height: 1.1; color: #9ec3ef; text-shadow: var(--outline);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 #radio-artist {
-  font-size: 13.5px; color: rgba(255, 255, 255, 0.66); margin-top: 1px;
+  font-weight: 700; font-size: 13px; color: #f1f1f1; text-shadow: var(--outline-thin); margin-top: 1px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.radio-ctrl { grid-area: ctrl; display: flex; align-items: center; justify-content: space-between; max-width: 200px; margin-top: 6px; }
+.radio-ctrl { grid-area: ctrl; display: flex; align-items: center; justify-content: space-between; max-width: 210px; margin-top: 6px; }
 .radio-btn {
   width: 44px; height: 40px; display: grid; place-items: center; padding: 0;
-  background: none; border: 0; border-radius: 12px; color: #fff;
-  transition: background .15s, transform .1s;
+  background: none; border: 0; color: #fff;
+  filter: drop-shadow(1.5px 0 0 #000) drop-shadow(-1.5px 0 0 #000) drop-shadow(0 1.5px 0 #000) drop-shadow(0 -1.5px 0 #000);
+  transition: transform .1s;
 }
-.radio-btn:active { background: rgba(255, 255, 255, 0.14); transform: scale(.94); }
+.radio-btn:active { transform: scale(.92); }
 .radio-btn svg { width: 24px; height: 24px; }
-.radio-btn.main svg { width: 30px; height: 30px; }
+.radio-btn.main {
+  width: 50px; height: 50px; border-radius: 50%; filter: none;
+  background: radial-gradient(circle at 40% 35%, #3c3c3c, #111 70%);
+  border: 3px solid #000; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18), 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+.radio-btn.main svg { width: 24px; height: 24px; }
 #radio-toggle .i-pause, #radio-toggle.playing .i-play { display: none; }
 #radio-toggle.playing .i-pause { display: block; }
 #radio-connect { position: fixed; z-index: 15; left: 50%; transform: translateX(-50%); bottom: calc(var(--sab) + 76px); background: rgba(0,0,0,.8); }
@@ -484,28 +493,32 @@ body.car #subtitle-text { font-size: 18px; }
 /* music on the car screen: Spotify-style "Now Playing" — cover on top, then title and
    artist, then the controls with a round play button. Sits below the turn box. */
 body.car #radio {
-  --cover: min(200px, calc(100vh - var(--it) - var(--ib) - 350px));
+  --cover: min(190px, calc(100vh - var(--it) - var(--ib) - 370px));
   top: calc(var(--it) + 158px); bottom: auto;
-  left: calc(var(--cx) + var(--cw) / 2); transform: translateX(-50%); width: auto;
-  grid-template-columns: var(--cover); grid-template-areas: "art" "text" "ctrl";
-  row-gap: 10px; padding: 14px 14px 10px; border-radius: 24px;
+  left: var(--cx); transform: none; /* left-aligned: the district name pops up on the right */
+  width: min(calc(var(--cw) - 180px), 480px);
+  grid-template-columns: 1fr; grid-template-areas: "art" "text" "ctrl";
+  row-gap: 8px; padding: 12px 14px 8px;
 }
-body.car .radio-cover { width: var(--cover); height: var(--cover); border-radius: 10px; box-shadow: 0 10px 24px rgba(0,0,0,.5); }
+/* wide banner of the cover across the top */
+body.car .radio-cover { width: 100%; height: var(--cover); }
 body.car .radio-cover::after { font-size: 56px; }
-body.car #radio-title { font-size: 19px; font-weight: 700; }
-body.car #radio-artist { font-size: 14px; color: rgba(255,255,255,.7); }
-body.car .radio-ctrl { max-width: none; justify-content: space-between; margin-top: 0; }
-body.car .radio-btn svg { width: 28px; height: 28px; }
-body.car .radio-btn.main { width: 54px; height: 54px; border-radius: 50%; background: #fff; color: #121212; }
-body.car .radio-btn.main svg { width: 26px; height: 26px; }
-body.car .radio-btn.main:active { background: #e6e6e6; }
-/* short car screens: not enough height for the cover on top, go side by side */
+body.car #radio-station { font-size: 14px; }
+body.car #radio-title { font-size: 32px; }
+body.car #radio-artist { font-size: 16px; }
+body.car .radio-ctrl { max-width: none; justify-content: center; gap: 34px; margin-top: 0; }
+body.car .radio-btn svg { width: 30px; height: 30px; }
+body.car .radio-btn.main { width: 60px; height: 60px; }
+body.car .radio-btn.main svg { width: 28px; height: 28px; }
+/* short car screens: not enough height for the banner on top, go side by side */
 @media (max-height: 520px) {
   body.car #radio {
     --cover: 108px;
-    grid-template-columns: var(--cover) minmax(0, 260px); grid-template-areas: "art text" "art ctrl";
-    column-gap: 16px; row-gap: 6px; padding: 14px;
+    grid-template-columns: var(--cover) 1fr; grid-template-areas: "art text" "art ctrl";
+    column-gap: 16px; row-gap: 4px; padding: 12px 14px;
   }
+  body.car .radio-cover { width: var(--cover); }
+  body.car .radio-ctrl { justify-content: flex-start; gap: 22px; }
 }
 body.car #radio-banner { display: none !important; }
 body.car #mission-text, body.car #mission-title { left: var(--cx); right: auto; width: var(--cw); }

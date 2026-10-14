@@ -12,7 +12,7 @@ export class Media {
     this.state = null;
     this.access = 'denied';
     this.el = {
-      box: $('radio'), art: $('radio-art'), title: $('radio-title'), artist: $('radio-artist'),
+      box: $('radio'), art: $('radio-art'), title: $('radio-title'), artist: $('radio-artist'), station: $('radio-station'),
       toggle: $('radio-toggle'), connect: $('radio-connect'), banner: $('radio-banner'),
     };
     $('radio-prev').addEventListener('click', () => this.command('prev'));
@@ -62,7 +62,8 @@ export class Media {
     document.body.classList.toggle('has-radio', showBox || showConnect);
     if (!showBox) return;
     this.el.title.textContent = s.title;
-    this.el.artist.textContent = [s.artist, s.app].filter(Boolean).join(' · ');
+    this.el.artist.textContent = s.artist || '';
+    this.el.station.textContent = s.app ? `Radio · ${s.app}` : 'Radio';
     this.el.art.hidden = !s.art;
     if (s.art && this.el.art.src !== s.art) this.el.art.src = s.art;
     // blurred copy of the cover tints the glass (data: URLs only, from the app)
