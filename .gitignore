@@ -1,0 +1,19 @@
+# local tooling / editor
+.claude/
+.vscode/
+.idea/
+*.log
+.DS_Store
+Thumbs.db
+node_modules/
+
+# fonts you may not redistribute (see web/fonts/README.md)
+web/fonts/*.otf
+web/fonts/*.ttf
+web/fonts/*.woff
+web/fonts/*.woff2
+
+# secrets
+.env
+*.keystore
+*.jks

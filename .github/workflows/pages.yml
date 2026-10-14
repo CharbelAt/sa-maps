@@ -1,0 +1,41 @@
+name: Deploy web app to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ['web/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Optional: point the app at your voice server (repo Settings > Variables > TTS_URL).
+      - name: Configure voice server
+        if: ${{ vars.TTS_URL != '' }}
+        run: sed -i "s#ttsUrl: ''#ttsUrl: '${{ vars.TTS_URL }}'#" web/config.js
+
+      # Bust the service-worker cache on every deploy.
+      - name: Stamp service worker version
+        run: sed -i "s#const VERSION = 'samaps-v1'#const VERSION = 'samaps-${GITHUB_SHA::8}'#" web/sw.js
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0b0b0b">
+  <meta name="description" content="Turn-by-turn navigation reskinned as the San Andreas radar, with CJ and Big Smoke reading the directions.">
+  <title>SA Maps</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/app/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/app/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Pirata+One&display=swap">
+  <link rel="stylesheet" href="vendor/maplibre-gl/maplibre-gl.css">
+  <link rel="stylesheet" href="css/sa.css">
+  <script src="vendor/maplibre-gl/maplibre-gl.js"></script>
+  <script type="module" src="js/main.js"></script>
+</head>
+<body class="mode-browse">
+  <!-- Map / radar -->
+  <div id="radar">
+    <div id="map"></div>
+    <div id="radar-ring" aria-hidden="true"></div>
+    <div id="blips" aria-hidden="true"></div>
+  </div>
+
+  <!-- Browse UI -->
+  <header id="search-bar" class="browse-only">
+    <button id="btn-options" class="icon-btn" aria-label="Options">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+    </button>
+    <input id="search" type="search" placeholder="Where to, CJ?" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="Search places">
+    <button id="btn-clear" class="icon-btn" aria-label="Clear" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+    </button>
+  </header>
+  <div id="results" class="sa-panel browse-only" hidden></div>
+
+  <div id="fabs" class="browse-only">
+    <button id="btn-locate" class="fab" aria-label="My location">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="2.4" fill="currentColor"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+
+  <section id="briefing" class="sa-panel browse-only" hidden aria-live="polite">
+    <button id="brief-close" class="icon-btn brief-close" aria-label="Close">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+    </button>
+    <div class="brief-kicker">Mission briefing</div>
+    <h2 id="brief-title"></h2>
+    <div id="brief-addr"></div>
+    <div id="brief-stats"></div>
+    <div class="brief-modes" role="radiogroup" aria-label="Travel mode">
+      <button data-profile="car" role="radio">Greenwood</button>
+      <button data-profile="bike" role="radio">BMX</button>
+      <button data-profile="foot" role="radio">On foot</button>
+    </div>
+    <div class="brief-actions">
+      <button id="btn-start" class="sa-btn primary">Start mission</button>
+      <button id="btn-test" class="sa-btn">Test drive</button>
+    </div>
+    <div class="brief-save">
+      <button id="btn-fav" class="chip">★ Save</button>
+      <button id="btn-home" class="chip">Set as Home</button>
+      <button id="btn-work" class="chip">Set as Work</button>
+    </div>
+  </section>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-top">
+      <div id="weapon"><img id="weapon-icon" src="assets/hud/fist.svg" alt=""><span id="ammo"></span></div>
+      <div class="hud-right">
+        <div id="clock">00:00</div>
+        <div id="bar-health" class="bar health"><i></i></div>
+        <div id="bar-armor" class="bar armor" hidden><i></i></div>
+      </div>
+    </div>
+    <div id="money">$00000000</div>
+    <div id="wanted" aria-hidden="true"></div>
+  </div>
+
+  <div id="infostack">
+    <div id="helpbox" hidden>
+      <img id="help-icon" alt="" hidden>
+      <div>
+        <div id="help-main"></div>
+        <div id="help-sub" hidden></div>
+      </div>
+    </div>
+    <div id="timers" hidden>
+      <div class="timer"><span>Time</span><b id="t-time">00:00</b></div>
+      <div class="timer"><span>ETA</span><b id="t-eta">00:00</b></div>
+    </div>
+  </div>
+
+  <div id="nav-buttons" class="nav-only">
+    <button id="btn-end" class="sa-btn danger">End</button>
+    <button id="btn-overview" class="round-btn" aria-label="Route overview">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18c3-9 6 0 9-7s5-6 7-7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="4" cy="18" r="2" fill="currentColor"/><rect x="18" y="2" width="4" height="4" fill="currentColor"/></svg>
+    </button>
+    <button id="btn-recenter" class="round-btn" aria-label="Recenter" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 17-7-4-7 4z" fill="currentColor"/></svg>
+    </button>
+    <button id="btn-mute" class="round-btn" aria-label="Mute crew">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="waves" d="M16 8.5a5 5 0 010 7M18.5 6a8.5 8.5 0 010 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="cross" d="M16 9l6 6M22 9l-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+
+  <div id="subtitle" aria-live="polite">
+    <img id="subtitle-avatar" alt="">
+    <div><span id="subtitle-name"></span><p id="subtitle-text"></p></div>
+  </div>
+
+  <div id="zone" aria-hidden="true"><div id="zone-vehicle"></div><div id="zone-name"></div></div>
+  <div id="mission-title" aria-hidden="true"></div>
+  <div id="mission-text" aria-live="polite"><div id="mission-big"></div><div id="mission-small"></div></div>
+  <div id="car-banner" hidden>Navigation is on your car screen. Pick a place here to send it to the car.</div>
+  <div id="toast" role="status"></div>
+
+  <!-- Options menu -->
+  <section id="options" class="sa-menu" hidden>
+    <header><h1>Options</h1><button id="options-close" class="icon-btn" aria-label="Close options">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+    </button></header>
+    <div id="options-list"></div>
+    <div class="options-test">
+      <button class="sa-btn" data-test="cj">Test CJ</button>
+      <button class="sa-btn" data-test="smoke">Test Big Smoke</button>
+    </div>
+    <p class="credits">
+      Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors ·
+      tiles <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> ·
+      routing <a href="https://project-osrm.org" target="_blank" rel="noopener">OSRM</a> / FOSSGIS ·
+      search <a href="https://photon.komoot.io" target="_blank" rel="noopener">Photon</a>.<br>
+      Fan-made parody. Not affiliated with or endorsed by Rockstar Games or Take-Two. Voices are your device's text-to-speech, not the original actors.
+    </p>
+  </section>
+
+  <!-- Start screen (browser only: unlocks audio + asks for location) -->
+  <div id="splash" hidden>
+    <div class="splash-inner">
+      <div class="splash-logo">SA<span>Maps</span></div>
+      <div class="splash-sub">San Andreas Navigation</div>
+      <button id="splash-start" class="sa-btn primary">Tap to start</button>
+      <div class="splash-note">Uses your location for directions. Sound on for CJ &amp; Big Smoke.</div>
+    </div>
+  </div>
+</body>
+</html>
