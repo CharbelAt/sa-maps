@@ -65,6 +65,14 @@
             </intent-filter>
         </activity>
 
+        <!-- Crash report screen, in its own process so it works even if start-up crashes. -->
+        <activity
+            android:name=".CrashActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:process=":crash"
+            android:theme="@style/Theme.SAMaps" />
+
         <!-- Keeps GPS alive while navigating with the phone locked. -->
         <service
             android:name=".NavigationService"

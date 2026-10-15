@@ -53,7 +53,14 @@ class MainActivity : ComponentActivity(), SAWebHost.Callbacks {
     }
 
     private fun createHost() {
-        val h = SAWebHost(this, WebMode.PHONE, this)
+        // WebView itself can fail to start (missing/disabled/updating "Android System WebView").
+        val h = try {
+            SAWebHost(this, WebMode.PHONE, this)
+        } catch (t: Throwable) {
+            CrashReporter.nonFatal(this, "creating the map WebView", t)
+            showStartError(t)
+            return
+        }
         host = h
         setContentView(
             h.webView,
@@ -67,6 +74,19 @@ class MainActivity : ComponentActivity(), SAWebHost.Callbacks {
         h.visible = started
         h.load()
         if (started) h.webView.onResume()
+    }
+
+    private fun showStartError(t: Throwable) {
+        val pad = (24 * resources.displayMetrics.density).toInt()
+        setContentView(android.widget.TextView(this).apply {
+            text = "SA Maps couldn't start its map view.\n\n" +
+                "Make sure \"Android System WebView\" and \"Chrome\" are installed, enabled and up to date " +
+                "in the Play Store, then reopen the app.\n\n(${t.javaClass.simpleName}: ${t.message})"
+            setTextColor(android.graphics.Color.WHITE)
+            setBackgroundColor(android.graphics.Color.BLACK)
+            textSize = 16f
+            setPadding(pad, pad * 3, pad, pad)
+        })
     }
 
     /**

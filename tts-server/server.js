@@ -3,6 +3,8 @@
 // Apache-2.0) cast to fit the characters. No voice cloning, no reference audio of anyone.
 import http from 'node:http';
 import crypto from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { VOICES, isVoice, MODEL_ID } from './lib/engine.js';
 import { SynthWorker } from './lib/synth.js';
 import { Lru, DiskCache } from './lib/cache.js';
@@ -46,6 +48,7 @@ const CONFIG = {
   maxQueue: Math.max(1, num(env.MAX_QUEUE, 64)),
   trustProxy: /^(1|true|yes)$/i.test(env.TRUST_PROXY || ''),
   readyTimeoutMs: 60_000,
+  crashDir: env.CRASH_DIR ?? './crash-reports', // empty string disables POST /crash
 };
 const ANY_ORIGIN = CONFIG.allowedOrigins.length === 0 || CONFIG.allowedOrigins.includes('*');
 
@@ -275,6 +278,31 @@ async function speak(req, res, ctx, rawText, params) {
   sendAudio(req, res, buf, etag, { 'X-Cache': cache === 'miss' || cache === 'join' ? 'MISS' : 'HIT', ...extra });
 }
 
+// Crash reports from the Android app (plain text, stored as files for debugging).
+const crashHits = new Map(); // ip -> [timestamps]
+async function crashReport(req, res, ctx) {
+  if (!CONFIG.crashDir) throw new HttpError(404, 'not found');
+  const now = Date.now();
+  const recent = (crashHits.get(ctx.ip) || []).filter((t) => now - t < 60_000);
+  if (recent.length >= 10) throw new HttpError(429, 'too many reports');
+  crashHits.set(ctx.ip, [...recent, now]);
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > 64 * 1024) throw new HttpError(413, 'report too large', { Connection: 'close' });
+    chunks.push(chunk);
+  }
+  const text = Buffer.concat(chunks).toString('utf8').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ''); // drop control chars
+  if (!text.trim()) throw new HttpError(400, 'empty report');
+  await mkdir(CONFIG.crashDir, { recursive: true });
+  const name = `${new Date(now).toISOString().replace(/[:.]/g, '-')}-${crypto.randomBytes(3).toString('hex')}.txt`;
+  await writeFile(join(CONFIG.crashDir, name), `ip: ${ctx.ip}\n${text}\n`, { mode: 0o600 });
+  ctx.info = `crash report ${name} (${size} bytes)`;
+  res.writeHead(204, { 'Cache-Control': 'no-store' });
+  res.end();
+}
+
 function castingJson() {
   return { cj: { ...CASTING.cj }, smoke: { ...CASTING.smoke } };
 }
@@ -325,6 +353,10 @@ async function route(req, res, ctx, url) {
       : resolveParams({ speaker: 'cj', voice: v, speed: body.speed ?? 1, pitch: body.pitch ?? 1 });
     if (typeof body.input !== 'string') throw new HttpError(400, 'input must be a string');
     return speak(req, res, ctx, body.input, params);
+  }
+  if (p === '/crash') {
+    if (req.method !== 'POST') throw new HttpError(405, 'method not allowed', { Allow: 'POST' });
+    return crashReport(req, res, ctx);
   }
   if (p === '/') {
     if (!isGet) throw new HttpError(405, 'method not allowed', { Allow: 'GET, HEAD' });
