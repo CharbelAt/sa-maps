@@ -59,8 +59,10 @@ export class Radar extends EventTarget {
   init(center) {
     const s = this.settings;
     // Arabic (and other right-to-left) labels need this to be joined and ordered correctly.
+    // Loaded eagerly: in lazy mode tiles with RTL text could wait on it forever, so the
+    // map never fired 'load' and the app never finished starting.
     if (maplibregl.getRTLTextPluginStatus?.() === 'unavailable') {
-      maplibregl.setRTLTextPlugin(new URL('vendor/rtl-text/mapbox-gl-rtl-text.js', location.href).href, true)
+      maplibregl.setRTLTextPlugin(new URL('vendor/rtl-text/mapbox-gl-rtl-text.js', location.href).href, false)
         ?.catch?.(() => { /* labels still render, just unshaped */ });
     }
     this.map = new maplibregl.Map({
