@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SA Maps Privacy Policy</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; background: #0b0b0b; color: #e8e8e8; font: 16px/1.6 -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+    h1 { color: #e0a72a; margin: 0 0 4px; }
+    h2 { color: #acc8f0; margin-top: 32px; font-size: 20px; }
+    .muted { color: #a8a8a8; }
+    a { color: #acc8f0; }
+    li { margin: 6px 0; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>SA Maps Privacy Policy</h1>
+  <p class="muted">Last updated: 16 October 2026</p>
+
+  <p>SA Maps is a hobby/lab navigation app. It has no accounts, no ads and no analytics, and it does not sell or share
+  personal data. This page lists exactly what leaves your device and why.</p>
+
+  <h2>Location</h2>
+  <ul>
+    <li>Your location is used on your device to show where you are and to follow your route, including while
+      navigating with the screen off (a notification is shown while this happens).</li>
+    <li>When you ask for a route, your current position and your destination are sent to the routing service
+      (<a href="https://routing.openstreetmap.de">routing.openstreetmap.de</a>, run by FOSSGIS; fallback:
+      <a href="https://project-osrm.org">OSRM demo server</a>) to calculate the route.</li>
+    <li>To keep search results local, your approximate position is sent along with search text to
+      <a href="https://photon.komoot.io">Photon</a> (by Komoot), and once to look up your country.</li>
+    <li>Location is not stored on any SA Maps server.</li>
+  </ul>
+
+  <h2>Search and place details</h2>
+  <ul>
+    <li>What you type in the search box is sent to Photon to find places.</li>
+    <li>When you open a place, its name and coordinates are sent to
+      <a href="https://nominatim.openstreetmap.org">Nominatim</a> (OpenStreetMap) to fetch opening hours, phone and website.</li>
+  </ul>
+
+  <h2>Map</h2>
+  <p>Map tiles and fonts are downloaded from <a href="https://openfreemap.org">OpenFreeMap</a>. Like any website,
+  these services see your IP address when your device requests data from them. Their own privacy policies apply.</p>
+
+  <h2>Voices</h2>
+  <p>The text of each spoken direction (for example "In 300 meters, turn left onto Hamra Street") is sent to the
+  SA Maps voice server to turn it into audio. The server keeps generated audio in a cache and keeps short technical
+  logs (time, IP address, request) for operation and abuse prevention. It does not receive your coordinates.</p>
+
+  <h2>Crash reports</h2>
+  <p>If the app crashes, it sends a crash report to the SA Maps server: the error details, app version, phone model,
+  Android version and the IP address the report came from. Reports are used only to fix bugs.</p>
+
+  <h2>Music controls (optional)</h2>
+  <p>If you grant notification access, SA Maps reads what your music app is playing (title, artist, cover art) to show
+  playback controls. This information stays on your device and is never sent anywhere. SA Maps does not read the
+  contents of your notifications.</p>
+
+  <h2>Data stored on your device</h2>
+  <p>Settings, saved places (home, work, favorites, recent destinations) and optional sound clips you add are stored
+  only on your device. Uninstalling the app removes them.</p>
+
+  <h2>Children</h2>
+  <p>SA Maps is not directed at children.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about this policy: open an issue at
+  <a href="https://github.com/CharbelAt/sa-maps/issues">github.com/CharbelAt/sa-maps</a>.</p>
+
+  <p class="muted">SA Maps is a fan-made parody and is not affiliated with or endorsed by Rockstar Games or Take-Two Interactive.</p>
+</main>
+</body>
+</html>

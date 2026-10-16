@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 import javax.inject.Inject
 
 plugins {
@@ -37,6 +38,16 @@ abstract class SyncWebAssetsTask : DefaultTask() {
 
 val webSourceDir = rootProject.file("../web")
 
+/**
+ * Play upload key. Kept OUT of the repo: by default ~/.satools/signing/keystore.properties
+ * (storeFile, storePassword, keyAlias, keyPassword), or the file named by $SAMAPS_SIGNING.
+ * Without it, release builds are simply unsigned.
+ */
+val uploadSigning = Properties().apply {
+    val f = file(System.getenv("SAMAPS_SIGNING") ?: "${System.getProperty("user.home")}/.satools/signing/keystore.properties")
+    if (f.isFile) f.inputStream().use { load(it) }
+}
+
 val syncWebAssets = tasks.register<SyncWebAssetsTask>("syncWebAssets") {
     group = "build"
     description = "Copies ../web into build/generated/webassets/web for packaging as assets."
@@ -61,8 +72,20 @@ android {
         versionName = "1.0.0"
     }
 
+    signingConfigs {
+        if (!uploadSigning.isEmpty) {
+            create("upload") {
+                storeFile = file(uploadSigning.getProperty("storeFile"))
+                storePassword = uploadSigning.getProperty("storePassword")
+                keyAlias = uploadSigning.getProperty("keyAlias")
+                keyPassword = uploadSigning.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (!uploadSigning.isEmpty) signingConfig = signingConfigs.getByName("upload")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
