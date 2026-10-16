@@ -504,7 +504,8 @@ body.car #subtitle-text { font-size: 18px; }
 body.car #radio {
   --cover: min(190px, calc(100vh - var(--it) - var(--ib) - 370px));
   top: calc(var(--it) + 158px); bottom: auto;
-  left: var(--cx); transform: none; /* left-aligned: the district name pops up on the right */
+  /* nudged right of the radar; the district name may pop up over it (#zone is drawn in front) */
+  left: calc(var(--cx) + min(72px, var(--cw) * 0.12)); transform: none;
   width: min(calc(var(--cw) - 180px), 480px);
   grid-template-columns: 1fr; grid-template-areas: "art" "text" "ctrl";
   row-gap: 8px; padding: 12px 14px 8px;
@@ -531,7 +532,7 @@ body.car .radio-btn.main svg { width: 28px; height: 28px; }
 }
 body.car #radio-banner { display: none !important; }
 body.car #mission-text, body.car #mission-title { left: var(--cx); right: auto; width: var(--cw); }
-body.car #zone { right: calc(100vw - var(--cx) - var(--cw)); bottom: calc(var(--ib) + 140px); }
+body.car #zone { z-index: 16; right: calc(100vw - var(--cx) - var(--cw)); bottom: calc(var(--ib) + 140px); }
 body.car #zone-name { font-size: 34px; }
 body.car #mission-big { font-size: clamp(32px, 7vw, 64px); }
 body.car .maplibregl-ctrl-bottom-left { left: var(--il); bottom: var(--ib); }
