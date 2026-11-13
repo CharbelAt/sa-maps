@@ -546,3 +546,9 @@ body.car .maplibregl-ctrl-bottom-left { left: var(--il); bottom: var(--ib); }
 /* map panel on the left third */
 body.car.car-panel #radar { inset: auto; left: var(--rx); top: var(--ry); width: var(--rw); height: var(--rh); }
 body.car.car-panel .maplibregl-ctrl-bottom-left { left: 0; bottom: 0; }
+/* full-screen map: the radar keeps the whole surface, the crew and mission text use its full width */
+body.car.car-full #subtitle {
+  left: calc(var(--il) + (100vw - var(--il) - var(--ir)) / 2);
+  width: min(calc(100vw - var(--il) - var(--ir) - 40px), 720px);
+}
+body.car.car-full #mission-text, body.car.car-full #mission-title { left: var(--il); width: calc(100vw - var(--il) - var(--ir)); }

@@ -11,7 +11,7 @@ export const DEFAULTS = {
   routeColor: 'gold',    // gold | purple | red | green
   trackUp: true,         // radar rotates with heading
   radarShape: 'full',    // full (full-screen radar) | circle (classic minimap)
-  carLayout: 'left',     // Android Auto: left (big radar) | small-left (half-size radar) | panel-left (map on the left third)
+  carLayout: 'left',     // Android Auto: left (big radar) | small-left (half-size radar) | panel-left (map on the left third) | full (map over the whole screen)
   music: true,           // music controls (Android app)
   radarLabels: false,    // street names on the radar (authentic = off)
   turf: true,            // gang turf tint over landuse

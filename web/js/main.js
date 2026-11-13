@@ -74,10 +74,11 @@ function layout() {
   const landscape = isCar || W > H * 1.15;
   // Car: Options > Android Auto layout. Phone: full-screen or classic radar.
   const carLayout = isCar ? settings.carLayout : null;
-  const circle = isCar ? carLayout !== 'panel-left' : settings.radarShape === 'circle';
+  const circle = isCar ? carLayout !== 'panel-left' && carLayout !== 'full' : settings.radarShape === 'circle';
   body.classList.toggle('landscape', landscape);
   body.classList.toggle('radar-circle', circle);
   body.classList.toggle('car-panel', carLayout === 'panel-left');
+  body.classList.toggle('car-full', carLayout === 'full');
   if (body.classList.contains('mode-browse')) return;
 
   // Android Auto reports the part of the screen its own UI doesn't cover (surface px).
@@ -137,6 +138,7 @@ function layout() {
  *  left       - big round radar, bottom-left
  *  small-left - half-size round radar, bottom-left; the turn box uses the space above it
  *  panel-left - rectangular map filling the left third
+ *  full       - map over the whole screen; turn box top-left, music floating on the right
  */
 function layoutCar(area, carLayout) {
   const s = document.body.style;
@@ -144,7 +146,18 @@ function layoutCar(area, carLayout) {
   const aw = area.right - area.left, ah = area.bottom - area.top;
   const HUD_W = 215; // compact HUD in the top-right corner
   let mapRight, stackX;
-  if (carLayout === 'panel-left') {
+  if (carLayout === 'full') {
+    // The radar keeps the whole surface (CSS default); you drive in the part left of the music.
+    // (no music column on a narrow surface: it would leave too little map)
+    const colW = aw >= 640 ? Math.min(Math.max(aw * 0.36, 300), 420) : 0;
+    mapRight = area.right - 12 - colW - 14;
+    radar.setView({
+      shape: 'full',
+      safe: { left: area.left + 12, top: area.top + 12, right: mapRight, bottom: area.bottom - 12 },
+      anchor: [(area.left + mapRight) / 2, area.top + ah * 0.64],
+    });
+    stackX = area.left + 14;
+  } else if (carLayout === 'panel-left') {
     const w = aw / 3;
     s.setProperty('--rx', px(area.left)); s.setProperty('--ry', px(area.top));
     s.setProperty('--rw', px(w)); s.setProperty('--rh', px(ah));
@@ -169,7 +182,7 @@ function layoutCar(area, carLayout) {
   const narrow = stackRoom < 170;
   document.body.classList.toggle('car-narrow', narrow);
   s.setProperty('--sx', px(stackX)); s.setProperty('--stackw', px(Math.min(narrow ? area.right - stackX - 10 : stackRoom, 460)));
-  carCol = { top: area.top, bottom: area.bottom, width: colW };
+  carCol = { top: area.top, bottom: area.bottom, left: colX + Math.min(72, colW * 0.12), width: colW };
   layoutCarRadio();
   radar.resize();
 }
@@ -183,7 +196,9 @@ let carCol = null;
 function layoutCarRadio() {
   if (!carCol) return;
   const body = document.body;
-  const top = Math.max($('infostack').getBoundingClientRect().bottom + 12, carCol.top + 125); // clear of the HUD corner
+  const stack = $('infostack').getBoundingClientRect();
+  const under = stack.right > carCol.left ? stack.bottom + 12 : 0; // only when the turn box is above it
+  const top = Math.max(under, carCol.top + 125); // clear of the HUD corner
   const room = carCol.bottom - 76 - top; // down to the subtitles
   const fits = carCol.width >= 290 && room >= 165;
   const tall = fits && room >= 290;
@@ -867,7 +882,7 @@ const OPTIONS = [
   { key: 'units', label: 'Units', options: [['metric', 'Metric'], ['imperial', 'Imperial']] },
   { key: 'routeColor', label: 'Route line', options: Object.keys(ROUTE_COLORS).map((k) => [k, k]) },
   { key: 'radarShape', label: 'Radar', options: [['full', 'Full screen'], ['circle', 'Classic radar']] },
-  { key: 'carLayout', label: 'Android Auto layout', options: [['left', 'Big radar'], ['small-left', 'Small radar'], ['panel-left', 'Map panel']] },
+  { key: 'carLayout', label: 'Android Auto layout', options: [['left', 'Big radar'], ['small-left', 'Small radar'], ['panel-left', 'Map panel'], ['full', 'Full screen']] },
   { key: 'music', label: 'Music controls', options: [[true, 'On'], [false, 'Off']] },
   { key: 'trackUp', label: 'Radar turns', options: [[true, 'With you'], [false, 'North up']] },
   { key: 'radarLabels', label: 'Street names on radar', options: [[false, 'Off'], [true, 'On']] },
