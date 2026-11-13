@@ -12,7 +12,7 @@ import { Crew, linesReady } from './crew.js';
 import { LocationProvider } from './location.js';
 import { Navigator, fetchRoute } from './nav.js';
 import { Simulator } from './sim.js';
-import { search, reverse, placeDetails } from './geo.js';
+import { search, reverse, placeDetails, nearby, NEARBY } from './geo.js';
 import { sfx, unlockAudio } from './sfx.js';
 import { CLIP_SLOTS, loadClips, setClip, clearClip, getClip } from './clips.js';
 import { Media } from './media.js';
@@ -45,8 +45,14 @@ const state = {
   preview: null,        // route for the briefing
   previewFrom: null,
   dest: null,
+  test: false,          // current mission is a test drive
+  pending: null,        // {place, resumed}: mission waiting for the first GPS fix
+  progress: null,       // latest progress from the navigator on the current route
+  tripSavedAt: 0,
+  resuming: false,
   rerouting: false,
   lastRerouteAt: 0,
+  lastWrongTurnAt: 0,
   lastFixAt: 0,
   gpsLost: false,
   carActive: false,
@@ -157,9 +163,36 @@ function layoutCar(area, carLayout) {
   }
   const colX = mapRight + 14, colW = area.right - colX - 12;
   s.setProperty('--cx', px(colX)); s.setProperty('--cw', px(colW));
-  s.setProperty('--sx', px(stackX)); s.setProperty('--stackw', px(Math.min(area.right - HUD_W - stackX - 10, 460)));
+  // Narrow surface (Android Auto's split screen): the turn box can't fit beside the HUD
+  // corner, so the HUD goes and the turn box gets the whole width.
+  const stackRoom = area.right - HUD_W - stackX - 10;
+  const narrow = stackRoom < 170;
+  document.body.classList.toggle('car-narrow', narrow);
+  s.setProperty('--sx', px(stackX)); s.setProperty('--stackw', px(Math.min(narrow ? area.right - stackX - 10 : stackRoom, 460)));
+  carCol = { top: area.top, bottom: area.bottom, width: colW };
+  layoutCarRadio();
   radar.resize();
 }
+
+/**
+ * Music card on the car screen: under the turn box, above the subtitles, in the column
+ * right of the radar. Short on room it goes side by side, then away (next to a narrow
+ * map Android Auto shows its own media card anyway).
+ */
+let carCol = null;
+function layoutCarRadio() {
+  if (!carCol) return;
+  const body = document.body;
+  const top = Math.max($('infostack').getBoundingClientRect().bottom + 12, carCol.top + 125); // clear of the HUD corner
+  const room = carCol.bottom - 76 - top; // down to the subtitles
+  const fits = carCol.width >= 290 && room >= 165;
+  const tall = fits && room >= 290;
+  body.classList.toggle('car-radio-off', !fits);
+  body.classList.toggle('car-radio-compact', fits && !tall);
+  body.style.setProperty('--radio-top', `${Math.round(top)}px`);
+  body.style.setProperty('--cover', `${Math.round(tall ? Math.min(190, room - 175) : 108)}px`);
+}
+if (isCar && 'ResizeObserver' in window) new ResizeObserver(layoutCarRadio).observe($('infostack'));
 
 function setUiMode(mode) {
   const body = document.body;
@@ -187,6 +220,7 @@ function mv(m, dist) {
 }
 
 function publishNavState(s, force = false) {
+  s = s || state.progress; // events between fixes still report where we are on the route
   const base = { muted: settings.crew === 'mute', units: settings.units };
   let ns;
   if (!nav.route || !state.dest) {
@@ -221,6 +255,12 @@ function onFix(fix) {
   }
   state.gpsLost = false;
 
+  if (state.pending && fix.source !== 'sim') {
+    const { place, resumed } = state.pending;
+    state.pending = null;
+    startNav(place, { resumed });
+  }
+
   let s = null;
   if (nav.active) s = nav.update(fix);
   radar.updatePlayer(fix, s?.snapped, s?.routeBearing);
@@ -248,6 +288,7 @@ function onFix(fix) {
 }
 
 function updateNavUi(s) {
+  state.progress = s;
   const units = settings.units;
   const next = localize(s.next);
   localize(s.then);
@@ -263,7 +304,38 @@ function updateNavUi(s) {
     state.routeDrawAt = now;
     radar.setRoute([s.snapped, ...nav.route.coords.slice(nav.idx + 1)]);
   }
+  if (!state.test && now - state.tripSavedAt > 30000) saveTrip(state.dest);
   publishNavState(s);
+}
+
+// ------------------------------------------------------------------ interrupted missions
+// The mission in progress is kept on the device (shared by the phone and car screens), so
+// it picks up again after an app restart, a fuel stop, or plugging into / out of the car.
+
+const TRIP_KEY = 'samaps.trip.v1';
+// How long after it was last active a mission still resumes: a lunch stop in the car,
+// a shorter window on the phone where reopening the app usually means something new.
+const TRIP_MAX_AGE_MS = (isCar ? 90 : 30) * 60 * 1000;
+
+function saveTrip(place) {
+  state.tripSavedAt = Date.now();
+  const { lat, lng, name, address } = place;
+  safe(() => localStorage.setItem(TRIP_KEY, JSON.stringify({ place: { lat, lng, name, address }, at: state.tripSavedAt })));
+}
+
+function clearTrip() { safe(() => localStorage.removeItem(TRIP_KEY)); }
+
+async function tryResume() {
+  if (state.resuming || state.dest || state.pending || state.selected || sim.running) return;
+  if (!isCar) {
+    // The car screen owns navigation while it's connected, and a phone in a pocket stays quiet.
+    if (state.carActive || (native && safe(() => window.SANative.isCarActive(), false))) return;
+    if (document.visibilityState !== 'visible') return;
+  }
+  const trip = safe(() => JSON.parse(localStorage.getItem(TRIP_KEY)), null);
+  if (!trip?.place || !(Date.now() - trip.at < TRIP_MAX_AGE_MS)) return;
+  state.resuming = true;
+  try { await startNav(trip.place, { resumed: true }); } finally { state.resuming = false; }
 }
 
 // ------------------------------------------------------------------ street names
@@ -314,8 +386,13 @@ nav.addEventListener('announce', (e) => {
 });
 nav.addEventListener('offroute', (e) => {
   hud.setWanted(1, true);
-  // Smoke's classic line (CJ-only mode gets a CJ line instead).
-  crew.event(settings.crew === 'cj' ? 'reroute' : 'wrong_turn', {}, { speaker: settings.crew === 'cj' ? 'cj' : 'smoke' });
+  // Smoke's classic line (CJ-only mode gets a CJ line instead); not over and over when
+  // the road just isn't on the map.
+  const now = Date.now();
+  if (now - state.lastWrongTurnAt > 45000) {
+    state.lastWrongTurnAt = now;
+    crew.event(settings.crew === 'cj' ? 'reroute' : 'wrong_turn', {}, { speaker: settings.crew === 'cj' ? 'cj' : 'smoke' });
+  }
   publishNavState(null, true);
   reroute(e.detail.fix);
 });
@@ -334,6 +411,7 @@ async function reroute(fix) {
     });
     if (!state.dest) return;
     nav.replaceRoute(route);
+    state.progress = null;
     radar.setRoute(route.coords);
     hud.setWanted(0);
     sfx.cleared();
@@ -353,29 +431,39 @@ function origin() {
   return f ? [f.lng, f.lat] : null;
 }
 
-async function startNav(place, { route = null, test = false } = {}) {
+async function startNav(place, { route = null, test = false, resumed = false } = {}) {
   if (!isCar && state.carActive && native) {
     const res = safe(() => window.SANative.sendToCar(JSON.stringify(place)), 'no-car');
     if (res === 'ok') { hud.toast('Sent to your car'); closeBriefing(); return; }
   }
+  state.pending = null;
   let from = test ? state.previewFrom || origin() : origin();
   if (!from && test) {
     const c = radar.map.getCenter();
     from = [c.lng, c.lat];
   }
-  if (!from) { hud.toast('Waiting for GPS…'); return; }
+  // No fix yet (cold start, "navigate to" from the car's assistant): start as soon as one arrives.
+  if (!from) { state.pending = { place, resumed }; hud.toast('Waiting for GPS…'); return; }
+  if (resumed) {
+    // Already there: the old mission is over.
+    if (haversine(from, [place.lng, place.lat]) < 150) { clearTrip(); return; }
+    hud.toast('Mission resumed');
+  }
   try {
     if (!route) {
       route = await fetchRoute(from, [place.lng, place.lat], { profile: settings.profile, customBase: settings.routerUrl });
     }
   } catch (err) {
-    crew.event('route_failed');
+    if (!resumed) crew.event('route_failed');
     hud.toast(err.noRoute ? 'No route found' : `Routing failed: ${err.message}`);
     return;
   }
   if (sim.running) sim.stop();
   state.dest = place;
+  state.test = test;
+  state.progress = null;
   state.zone = null;
+  if (test) clearTrip(); else saveTrip(place);
   addRecent(place);
   closeBriefing();
   radar.removeBlip('sel');
@@ -412,9 +500,12 @@ function finishNav(kind) {
     hud.missionText('failed');
     crew.event('cancel');
   }
+  // 'silent' = the car screen is taking over: the saved mission stays so it resumes there.
+  if (kind !== 'silent') clearTrip();
   sim.stop();
   nav.stop();
   state.dest = null;
+  state.progress = null;
   radar.setRoute(null);
   radar.removeBlip('dest');
   hud.hideHelp();
@@ -436,7 +527,9 @@ async function keepAwake(on) {
   } catch { /* not allowed */ }
 }
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && state.dest && !native) keepAwake(true);
+  if (document.visibilityState !== 'visible') return;
+  if (state.dest && !native) keepAwake(true);
+  if (window.SA?.ready) tryResume(); // e.g. opened on the phone after unplugging from the car
 });
 
 // GPS watchdog
@@ -481,9 +574,48 @@ function showResults(nodes) {
   document.body.classList.toggle('has-results', nodes.length > 0);
 }
 
+// "Nearest fuel / food / ATM..." chips.
+function nearbyChips() {
+  const row = document.createElement('div');
+  row.className = 'nearby-chips';
+  for (const cat of NEARBY) {
+    const b = document.createElement('button');
+    b.className = 'chip';
+    const img = document.createElement('img');
+    img.src = `assets/poi/${cat.icon}.svg`;
+    img.alt = '';
+    b.append(img, cat.label);
+    b.addEventListener('click', () => showNearby(cat));
+    row.appendChild(b);
+  }
+  return row;
+}
+
+async function showNearby(cat) {
+  searchCtrl?.abort();
+  searchCtrl = new AbortController();
+  const note = (text) => {
+    const d = document.createElement('div');
+    d.className = 'results-empty';
+    d.textContent = text;
+    return d;
+  };
+  const top = [head('Nearby'), nearbyChips(), head(cat.label)];
+  showResults([...top, note('Looking around…')]);
+  try {
+    const c = radar.map.getCenter();
+    const res = await nearby(cat, origin() || [c.lng, c.lat], searchCtrl.signal);
+    showResults([...top, ...(res.length
+      ? res.map((p) => placeRow(p, `assets/poi/${cat.icon}.svg`))
+      : [note('Nothing like that around here, homie.')])]);
+  } catch (err) {
+    if (err.name !== 'AbortError') showResults([...top, note('Search failed, check the connection.')]);
+  }
+}
+
 function showQuick() {
   const pl = getPlaces();
-  const nodes = [];
+  const nodes = [head('Nearby'), nearbyChips()];
   if (pl.home || pl.work) {
     nodes.push(head('Safehouses'));
     if (pl.home) nodes.push(placeRow({ ...pl.home, name: 'Home', address: pl.home.name }, 'assets/blips/home.svg', () => selectPlace(pl.home)));
@@ -581,6 +713,7 @@ function renderBriefing() {
 
 async function selectPlace(p) {
   state.selected = p;
+  state.pending = null; // picking something new replaces a mission still waiting for GPS
   state.preview = null;
   searchEl.blur();
   showResults([]);
@@ -879,10 +1012,12 @@ window.SA = {
   onTtsEvent: (id, ev) => voice.onNativeEvent(id, ev),
   onMedia: (s) => media.update(s),
   setDisplayMode: (o) => {
+    const wasCar = state.carActive;
     state.carActive = !!o?.carActive;
     document.body.classList.toggle('car-active', state.carActive && !isCar);
     $('car-banner').hidden = !(state.carActive && !isCar);
-    if (state.carActive && !isCar && state.dest) finishNav('silent');
+    if (state.carActive && !isCar) { state.pending = null; if (state.dest) finishNav('silent'); }
+    if (wasCar && !state.carActive && window.SA.ready) tryResume(); // unplugged mid-mission
   },
   setCarInsets: (ins) => {
     state.insets = ins?.visible || ins?.stable || state.insets;
@@ -947,6 +1082,7 @@ async function boot() {
   } else if ('serviceWorker' in navigator && location.protocol === 'https:') {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
+  tryResume();
 }
 
 boot();

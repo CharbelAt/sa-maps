@@ -19,7 +19,14 @@ async function fetchJson(url, ms = 12000) {
   const t = setTimeout(() => ctrl.abort(), ms);
   try {
     const res = await fetch(url, { signal: ctrl.signal });
+    // OSRM answers "no route" as HTTP 400 with a JSON body; anything else non-OK is the server.
+    if (!res.ok && res.status !== 400) throw new Error(`server error ${res.status}`);
     return await res.json();
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('server timed out');
+    if (e instanceof TypeError) throw new Error('no connection');
+    if (e instanceof SyntaxError) throw new Error('bad answer from the server');
+    throw e;
   } finally {
     clearTimeout(t);
   }
@@ -109,6 +116,8 @@ export class Navigator extends EventTarget {
     this.offCount = 0;
     this.offSince = 0;
     this.offRoute = false;
+    this.joined = false;   // matched the route at least once since it was (re)planned
+    this.startGap = null;  // closest we've been to the route before joining it
     this.phases = new Map();
     this.arrived = false;
   }
@@ -179,7 +188,11 @@ export class Navigator extends EventTarget {
       this.idx = m.index;
       this.along = m.along;
       this.offCount = 0;
+      this.joined = true;
       if (this.offRoute) { this.offRoute = false; this.emit('onroute'); }
+    } else if (!this.joined && !this.offRoute && this.approaching(m ? m.dist : Infinity)) {
+      // Not on the route yet (car park, driveway, rough first fix): not a wrong turn.
+      this.offCount = 0;
     } else {
       if (this.offCount++ === 0) this.offSince = now;
       if (!this.offRoute && this.offCount >= 3 && now - this.offSince >= 3000) {
@@ -221,6 +234,12 @@ export class Navigator extends EventTarget {
       this.emit('arrived', state);
     }
     return state;
+  }
+
+  /** Before the first match: true until you've moved clearly further from the route than the closest you've been. */
+  approaching(gap) {
+    this.startGap = Math.min(this.startGap ?? gap, gap);
+    return gap <= this.startGap + 80;
   }
 
   stepAt(d) {

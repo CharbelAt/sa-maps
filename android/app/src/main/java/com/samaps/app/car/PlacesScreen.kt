@@ -14,7 +14,7 @@ import com.samaps.app.NavHub
 import com.samaps.app.R
 import org.json.JSONObject
 
-/** Home / Work / favorites / recents from `SA.getPlaces()`. */
+/** Nearby shortcut, then Home / Work / favorites / recents from `SA.getPlaces()`. */
 class PlacesScreen(carContext: CarContext) : Screen(carContext) {
 
     private var places: JSONObject? = null
@@ -36,7 +36,16 @@ class PlacesScreen(carContext: CarContext) : Screen(carContext) {
         if (!loaded) return b.setLoading(true).build()
 
         val limit = CarUi.listLimit(carContext)
-        var used = 0
+        // First row: "nearest fuel / parking / food ..." (counts towards the host's row limit).
+        val nearby = ItemList.Builder().addItem(
+            Row.Builder()
+                .setTitle(carContext.getString(R.string.car_nearby_row))
+                .setImage(CarUi.icon(carContext, R.drawable.ic_act_search))
+                .setBrowsable(true)
+                .setOnClickListener { screenManager.push(NearbyScreen(carContext)) }
+                .build()
+        ).build()
+        var used = 1
         val saved = ItemList.Builder()
         var savedCount = 0
         val recents = ItemList.Builder()
@@ -78,11 +87,8 @@ class PlacesScreen(carContext: CarContext) : Screen(carContext) {
             }
         }
 
-        if (savedCount == 0 && recentCount == 0) {
-            return b.setSingleList(
-                ItemList.Builder().setNoItemsMessage(carContext.getString(R.string.car_places_none)).build()
-            ).build()
-        }
+        if (savedCount == 0 && recentCount == 0) return b.setSingleList(nearby).build()
+        b.addSectionedList(SectionedItemList.create(nearby, carContext.getString(R.string.car_nearby)))
         if (savedCount > 0) {
             b.addSectionedList(SectionedItemList.create(saved.build(), carContext.getString(R.string.car_places_saved)))
         }

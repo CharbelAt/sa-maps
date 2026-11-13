@@ -70,6 +70,32 @@ export async function search(q, near, signal) {
   return places.slice(0, 8);
 }
 
+// ---- nearest places of a kind ----------------------------------------------
+
+/** icon = a badge from assets/poi/. tags = OSM key:value, any of them matches. */
+export const NEARBY = [
+  { key: 'fuel', label: 'Fuel', icon: 'fuel', tags: ['amenity:fuel'] },
+  { key: 'food', label: 'Food', icon: 'fastfood', tags: ['amenity:restaurant', 'amenity:fast_food'] },
+  { key: 'coffee', label: 'Coffee', icon: 'cafe', tags: ['amenity:cafe'] },
+  { key: 'atm', label: 'ATM', icon: 'bank', tags: ['amenity:atm', 'amenity:bank'] },
+  { key: 'pharmacy', label: 'Pharmacy', icon: 'pharmacy', tags: ['amenity:pharmacy'] },
+  { key: 'parking', label: 'Parking', icon: 'parking', tags: ['amenity:parking'] },
+  { key: 'hospital', label: 'Hospital', icon: 'hospital', tags: ['amenity:hospital'] },
+  { key: 'garage', label: "Pay 'n' Spray", icon: 'car', tags: ['shop:car_repair'] },
+];
+
+/** The closest places of one NEARBY kind, nearest first. near = [lng, lat]. */
+export async function nearby(cat, near, signal) {
+  const params = new URLSearchParams({ lat: near[1].toFixed(5), lon: near[0].toFixed(5), radius: '15', limit: '10', lang: 'en' });
+  for (const t of cat.tags) params.append('osm_tag', t);
+  const res = await fetch(`${PHOTON}/reverse?${params}`, { signal });
+  if (!res.ok) throw new Error(`Search failed (${res.status})`);
+  return ((await res.json()).features || [])
+    .map((f) => ({ ...placeFromFeature(f), icon: cat.icon, kindLabel: cat.label }))
+    .map((p) => ({ ...p, dist: haversine(near, [p.lng, p.lat]) }))
+    .sort((a, b) => a.dist - b.dist);
+}
+
 // ---- place details (OpenStreetMap tags via Nominatim) -----------------------
 
 const NOMINATIM = 'https://nominatim.openstreetmap.org';

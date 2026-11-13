@@ -1,12 +1,16 @@
 package com.samaps.app.car
 
+import android.location.Location
 import androidx.annotation.DrawableRes
 import androidx.car.app.CarContext
 import androidx.car.app.constraints.ConstraintManager
 import androidx.car.app.model.CarIcon
 import androidx.car.app.model.Distance
+import androidx.car.app.model.Row
 import androidx.car.app.versioning.CarAppApiLevels
 import androidx.core.graphics.drawable.IconCompat
+import com.samaps.app.R
+import java.util.Locale
 import kotlin.math.max
 import kotlin.math.roundToLong
 
@@ -43,6 +47,31 @@ object CarUi {
                 else -> Distance.create((m / 1000.0).roundToLong().toDouble(), Distance.UNIT_KILOMETERS)
             }
         }
+    }
+
+    /** "350 m" / "2.4 km" / "0.8 mi" from [here] to [p] for a list row, or null without a fix. */
+    fun distanceText(here: Location?, p: Place, units: String?): String? {
+        if (here == null) return null
+        val m = Photon.distanceM(here, p).toDouble()
+        return if (units.equals("imperial", ignoreCase = true)) {
+            val mi = m / 1609.344
+            if (mi < 0.1) String.format(Locale.US, "%d ft", (m * 3.28084).toInt())
+            else String.format(Locale.US, "%.1f mi", mi)
+        } else {
+            if (m < 1000) String.format(Locale.US, "%d m", m.toInt())
+            else String.format(Locale.US, "%.1f km", m / 1000)
+        }
+    }
+
+    /** A place as a list row: name, then "distance · address". */
+    fun placeRow(context: CarContext, p: Place, here: Location?, units: String?, onClick: () -> Unit): Row {
+        val row = Row.Builder()
+            .setTitle(p.name)
+            .setImage(icon(context, R.drawable.ic_row_place))
+            .setOnClickListener(onClick)
+        val sub = listOfNotNull(distanceText(here, p, units), p.address).joinToString(" · ")
+        if (sub.isNotBlank()) row.addText(sub)
+        return row.build()
     }
 
     /** Max rows a list may show on this host. */

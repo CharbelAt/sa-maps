@@ -24,6 +24,7 @@ export class Voice {
     this.clips = new Map(); // url -> Promise<objectURL>
     this.audio = null;
     this.serverDown = 0;    // timestamp of last server failure (back off for a minute)
+    this.clipFails = 0;     // neural clips the app had to replace with device speech, in a row
     if (!this.native && 'speechSynthesis' in window) {
       const load = () => { this.webVoices = speechSynthesis.getVoices().filter((v) => /^en/i.test(v.lang)); };
       load();
@@ -230,6 +231,15 @@ export class Voice {
 
   /** Native TTS / clip callback (SA.onTtsEvent) */
   onNativeEvent(id, event) {
+    // The app couldn't play a neural clip in time and read the line itself. Twice in a row
+    // means the voice server is out of reach: skip it for a minute so the next directions
+    // aren't each held up waiting for it.
+    if (event === 'clipfail') {
+      this.failedId = id;
+      if (++this.clipFails >= 2) this.serverDown = Date.now();
+    } else if (event === 'done' && id !== this.failedId) {
+      this.clipFails = 0;
+    }
     if (event === 'done' || event === 'error') this.finish(id);
   }
 }

@@ -315,6 +315,8 @@ object VoiceHub {
             finishCurrent("done")
             return
         }
+        // Lets the web app stop asking the voice server for a while (see voice.js).
+        item.host.get()?.let { emit(it, item.webId, "clipfail") }
         item.usingTts = true
         speakTts(item)
     }

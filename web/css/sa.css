@@ -168,6 +168,11 @@ body.mode-nav:not(.radar-circle) .maplibregl-ctrl-bottom-left { bottom: calc(var
 .result .r-dist { font-family: var(--f-price); font-size: 17px; color: var(--money-hi); text-shadow: var(--outline-thin); flex: none; }
 .results-head { font-family: var(--f-price); text-transform: uppercase; font-size: 15px; letter-spacing: .08em; color: var(--gold); padding: 8px 14px 2px; text-shadow: var(--outline-thin); }
 .results-empty { padding: 14px; color: var(--muted); }
+/* "nearest fuel / food / ATM" shortcuts: one row you can swipe sideways */
+.nearby-chips { display: flex; gap: 8px; padding: 6px 14px 8px; overflow-x: auto; scrollbar-width: none; }
+.nearby-chips::-webkit-scrollbar { display: none; }
+.nearby-chips .chip { display: flex; align-items: center; gap: 6px; flex: none; white-space: nowrap; }
+.nearby-chips .chip img { width: 20px; height: 20px; }
 
 #fabs { position: fixed; z-index: 10; right: calc(var(--sar) + 12px); bottom: calc(var(--sab) + 28px); display: grid; gap: 10px; }
 .fab, .round-btn {
@@ -502,14 +507,18 @@ body.car #subtitle-text { font-size: 18px; }
 /* music on the car screen: Spotify-style "Now Playing" — cover on top, then title and
    artist, then the controls with a round play button. Sits below the turn box. */
 body.car #radio {
-  --cover: min(190px, calc(100vh - var(--it) - var(--ib) - 370px));
-  top: calc(var(--it) + 158px); bottom: auto;
+  /* --radio-top / --cover come from layoutCarRadio(): under the turn box, above the subtitles */
+  --nudge: min(72px, calc(var(--cw) * 0.12));
+  top: var(--radio-top, calc(var(--it) + 158px)); bottom: auto;
   /* nudged right of the radar; the district name may pop up over it (#zone is drawn in front) */
-  left: calc(var(--cx) + min(72px, var(--cw) * 0.12)); transform: none;
-  width: min(calc(var(--cw) - 180px), 480px);
+  left: calc(var(--cx) + var(--nudge)); transform: none;
+  /* roomy columns leave the right side free; narrow ones give the card what there is */
+  width: min(max(calc(var(--cw) - 180px), min(calc(var(--cw) - var(--nudge) - 8px), 300px)), 480px);
   grid-template-columns: 1fr; grid-template-areas: "art" "text" "ctrl";
   row-gap: 8px; padding: 12px 14px 8px;
 }
+body.car.car-radio-off #radio { display: none !important; }
+body.car.car-narrow #hud { display: none; }
 /* wide banner of the cover across the top */
 body.car .radio-cover { width: 100%; height: var(--cover); }
 body.car .radio-cover::after { font-size: 56px; }
@@ -520,16 +529,14 @@ body.car .radio-ctrl { max-width: none; justify-content: center; gap: 34px; marg
 body.car .radio-btn svg { width: 30px; height: 30px; }
 body.car .radio-btn.main { width: 60px; height: 60px; }
 body.car .radio-btn.main svg { width: 28px; height: 28px; }
-/* short car screens: not enough height for the banner on top, go side by side */
-@media (max-height: 520px) {
-  body.car #radio {
-    --cover: 108px;
-    grid-template-columns: var(--cover) 1fr; grid-template-areas: "art text" "art ctrl";
-    column-gap: 16px; row-gap: 4px; padding: 12px 14px;
-  }
-  body.car .radio-cover { width: var(--cover); }
-  body.car .radio-ctrl { justify-content: flex-start; gap: 22px; }
+/* not enough height for the banner on top (short screens, long turn text): side by side */
+body.car.car-radio-compact #radio {
+  grid-template-columns: var(--cover) 1fr; grid-template-areas: "art text" "art ctrl";
+  column-gap: 16px; row-gap: 4px; padding: 12px 14px;
 }
+body.car.car-radio-compact .radio-cover { width: var(--cover); }
+body.car.car-radio-compact .radio-ctrl { justify-content: flex-start; gap: 22px; }
+body.car.car-radio-compact .radio-btn.main { width: 48px; height: 48px; }
 body.car #radio-banner { display: none !important; }
 body.car #mission-text, body.car #mission-title { left: var(--cx); right: auto; width: var(--cw); }
 body.car #zone { z-index: 16; right: calc(100vw - var(--cx) - var(--cw)); bottom: calc(var(--ib) + 140px); }

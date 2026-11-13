@@ -1,6 +1,5 @@
 package com.samaps.app.car
 
-import android.location.Location
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -8,7 +7,6 @@ import androidx.car.app.CarContext
 import androidx.car.app.Screen
 import androidx.car.app.model.Action
 import androidx.car.app.model.ItemList
-import androidx.car.app.model.Row
 import androidx.car.app.model.SearchTemplate
 import androidx.car.app.model.Template
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -18,7 +16,6 @@ import com.samaps.app.LocationHub
 import com.samaps.app.NavHub
 import com.samaps.app.R
 import com.samaps.app.optStr
-import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -107,15 +104,7 @@ class SearchScreen(carContext: CarContext) : Screen(carContext) {
         val limit = CarUi.listLimit(carContext)
         val here = LocationHub.last
         val units = NavHub.lastCarNavState?.optStr("units")
-        for (p in results.take(limit)) {
-            val row = Row.Builder()
-                .setTitle(p.name)
-                .setImage(CarUi.icon(carContext, R.drawable.ic_row_place))
-                .setOnClickListener { pick(p) }
-            val sub = listOfNotNull(distanceText(here, p, units), p.address).joinToString(" · ")
-            if (sub.isNotBlank()) row.addText(sub)
-            list.addItem(row.build())
-        }
+        for (p in results.take(limit)) list.addItem(CarUi.placeRow(carContext, p, here, units) { pick(p) })
         if (results.isEmpty()) {
             when {
                 failed -> list.setNoItemsMessage(carContext.getString(R.string.car_search_error))
@@ -123,21 +112,6 @@ class SearchScreen(carContext: CarContext) : Screen(carContext) {
             }
         }
         return list.build()
-    }
-
-    private fun distanceText(here: Location?, p: Place, units: String?): String? {
-        if (here == null) return null
-        val out = FloatArray(1)
-        Location.distanceBetween(here.latitude, here.longitude, p.lat, p.lng, out)
-        val m = out[0].toDouble()
-        return if (units.equals("imperial", ignoreCase = true)) {
-            val mi = m / 1609.344
-            if (mi < 0.1) String.format(Locale.US, "%d ft", (m * 3.28084).toInt())
-            else String.format(Locale.US, "%.1f mi", mi)
-        } else {
-            if (m < 1000) String.format(Locale.US, "%d m", m.toInt())
-            else String.format(Locale.US, "%.1f km", m / 1000)
-        }
     }
 
     private fun pick(p: Place) {
