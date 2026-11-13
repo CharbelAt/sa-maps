@@ -1,14 +1,10 @@
 package com.samaps.app.car
 
-import android.os.Handler
-import android.os.Looper
-import android.os.SystemClock
 import android.util.Log
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
 import androidx.car.app.model.Action
 import androidx.car.app.model.ActionStrip
-import androidx.car.app.model.CarColor
 import androidx.car.app.model.DateTimeWithZone
 import androidx.car.app.model.Template
 import androidx.car.app.navigation.NavigationManager
@@ -16,7 +12,6 @@ import androidx.car.app.navigation.NavigationManagerCallback
 import androidx.car.app.navigation.model.Destination
 import androidx.car.app.navigation.model.Maneuver
 import androidx.car.app.navigation.model.NavigationTemplate
-import androidx.car.app.navigation.model.RoutingInfo
 import androidx.car.app.navigation.model.Step
 import androidx.car.app.navigation.model.TravelEstimate
 import androidx.car.app.navigation.model.Trip
@@ -32,26 +27,19 @@ import kotlin.math.max
 import kotlin.math.roundToLong
 
 /**
- * Root car screen: a NavigationTemplate over the web-rendered map. While navigating it shows the
- * native routing card (maneuver, distance, ETA) built from the car WebView's NavState; otherwise
- * just the action strips (free-drive radar).
+ * Root car screen: a NavigationTemplate over the web-rendered map. The radar, turn box, timers and
+ * music card are all drawn by the car WebView, so the template only carries the action strips. The
+ * host's own routing card is deliberately not set: it would sit on top of the web HUD and shrink
+ * the area the host leaves free for it. Turn data still reaches cluster / HUD displays through
+ * [NavigationManager.updateTrip].
  */
 class NavScreen(carContext: CarContext) : Screen(carContext) {
 
-    private val main = Handler(Looper.getMainLooper())
     private val navManager: NavigationManager = carContext.getCarService(NavigationManager::class.java)
 
-    private var state: JSONObject? = null
     private var navigating = false
+    private var muted = false
     private var inPanMode = false
-
-    private var lastInvalidateAt = 0L
-    private var lastKey: String? = null
-    private var invalidatePending = false
-    private val deferredInvalidate = Runnable {
-        invalidatePending = false
-        doInvalidate()
-    }
 
     private val stateListener: (JSONObject) -> Unit = { onState(it) }
 
@@ -74,7 +62,6 @@ class NavScreen(carContext: CarContext) : Screen(carContext) {
 
             override fun onDestroy(owner: LifecycleOwner) {
                 NavHub.carNavStateListeners -= stateListener
-                main.removeCallbacks(deferredInvalidate)
                 if (navigating) {
                     navigating = false
                     try {
@@ -96,8 +83,10 @@ class NavScreen(carContext: CarContext) : Screen(carContext) {
 
     private fun onState(s: JSONObject) {
         val nav = s.optBoolean("navigating", false)
-        val navChanged = nav != navigating
-        if (navChanged) {
+        val mute = s.optBoolean("muted", false)
+        // Only the End button and the mute icon depend on the state.
+        val changed = nav != navigating || mute != muted
+        if (nav != navigating) {
             navigating = nav
             try {
                 if (nav) navManager.navigationStarted() else navManager.navigationEnded()
@@ -105,66 +94,22 @@ class NavScreen(carContext: CarContext) : Screen(carContext) {
                 Log.w(TAG, "navigation${if (nav) "Started" else "Ended"} failed", t)
             }
         }
-        state = s
+        muted = mute
         if (nav) updateTrip(s)
-        val urgent = navChanged || keyOf(s) != lastKey
-        scheduleInvalidate(urgent)
-    }
-
-    /** Things whose change must be shown immediately (maneuver, mode); distances can wait 1 s. */
-    private fun keyOf(s: JSONObject?): String {
-        if (s == null) return ""
-        val next = s.optJSONObject("next")
-        val then = s.optJSONObject("then")
-        return listOf(
-            s.optBoolean("navigating"), s.optBoolean("arrived"), s.optBoolean("rerouting"),
-            s.optBoolean("muted"), s.optStr("units"),
-            next?.optStr("icon"), next?.optStr("instruction"), next?.optStr("street"),
-            next?.opt("exit"), then?.optStr("icon"),
-        ).joinToString("|")
-    }
-
-    private fun scheduleInvalidate(urgent: Boolean) {
-        val elapsed = SystemClock.elapsedRealtime() - lastInvalidateAt
-        if (urgent || elapsed >= MIN_INVALIDATE_MS) {
-            main.removeCallbacks(deferredInvalidate)
-            invalidatePending = false
-            doInvalidate()
-        } else if (!invalidatePending) {
-            invalidatePending = true
-            main.postDelayed(deferredInvalidate, MIN_INVALIDATE_MS - elapsed)
-        }
-    }
-
-    private fun doInvalidate() {
-        lastInvalidateAt = SystemClock.elapsedRealtime()
-        lastKey = keyOf(state)
-        invalidate()
+        if (changed) invalidate()
     }
 
     // ---- template --------------------------------------------------------------------------------
 
     override fun onGetTemplate(): Template {
-        val s = state
         val b = NavigationTemplate.Builder()
-            .setActionStrip(buildActionStrip(navigating && s != null, s?.optBoolean("muted") == true))
-            .setBackgroundColor(CarColor.createCustom(ROUTING_CARD_COLOR, ROUTING_CARD_COLOR))
+            .setActionStrip(buildActionStrip(navigating, muted))
 
         if (carContext.carAppApiLevel >= CarAppApiLevels.LEVEL_2) {
             b.setMapActionStrip(buildMapActionStrip())
             b.setPanModeListener { isInPanMode ->
                 inPanMode = isInPanMode
                 Log.d(TAG, "Pan mode: $isInPanMode")
-            }
-        }
-
-        if (navigating && s != null) {
-            try {
-                b.setNavigationInfo(buildRoutingInfo(s))
-                travelEstimate(s)?.let { b.setDestinationTravelEstimate(it) }
-            } catch (t: Throwable) {
-                Log.w(TAG, "Bad routing info from NavState", t)
-                b.setNavigationInfo(RoutingInfo.Builder().setLoading(true).build())
             }
         }
         return b.build()
@@ -227,18 +172,6 @@ class NavScreen(carContext: CarContext) : Screen(carContext) {
             )
             .build()
 
-    private fun buildRoutingInfo(s: JSONObject): RoutingInfo {
-        val next = s.optJSONObject("next")
-        if (s.optBoolean("rerouting") || next == null) {
-            return RoutingInfo.Builder().setLoading(true).build()
-        }
-        val units = s.optStr("units") ?: "metric"
-        val rb = RoutingInfo.Builder()
-            .setCurrentStep(buildStep(next), CarUi.distance(next.optDouble("distanceM", 0.0), units))
-        s.optJSONObject("then")?.let { rb.setNextStep(buildStep(it)) }
-        return rb.build()
-    }
-
     private fun buildStep(o: JSONObject): Step {
         val m = ManeuverMapper.map(o)
         val mb = Maneuver.Builder(m.type).setIcon(CarUi.icon(carContext, m.icon))
@@ -294,9 +227,5 @@ class NavScreen(carContext: CarContext) : Screen(carContext) {
 
     companion object {
         private const val TAG = "SAMaps/NavScreen"
-        private const val MIN_INVALIDATE_MS = 1_000L
-
-        /** Dark radar-olive card behind the maneuver. */
-        private const val ROUTING_CARD_COLOR = 0xFF2B3316.toInt()
     }
 }

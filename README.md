@@ -77,9 +77,17 @@ push a `v*` tag), install it on your phone, then enable it for Android Auto:
 2. ⋮ menu → **Developer settings** → enable **Unknown sources**.
 3. Plug into the car (or use the Desktop Head Unit) — **SA Maps** shows up in the launcher.
 
+Android Auto 17+ hides apps that weren't installed by Google Play even with *Unknown sources* on
+(`CAR.VALIDATOR: Package DENIED`). Install the APK with **KingInstaller** (it registers the install
+as a Play install), or publish it to a Play internal-testing track (`docs/play/PLAY-STORE.md`).
+
 On the phone it runs full-screen with native GPS and voices. When Android Auto connects, the car
 screen takes over navigation and the phone becomes a remote: pick a place on the phone and it's
 sent to the car.
+
+The car screen is drawn entirely by the app (radar, turn box, timers, music card); Android Auto's
+own turn card is not used. Its media card is part of Android Auto's split-screen view, which the
+app can't change: open SA Maps full screen to get the app's own layout.
 
 ## Options
 

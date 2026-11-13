@@ -17,4 +17,5 @@
     <string name="car_search_error">Search failed, check the connection</string>
     <string name="car_home">Home</string>
     <string name="car_work">Work</string>
+    <string name="car_music_access">For music controls here, open SA Maps on the phone and tap Connect Spotify / YouTube Music.</string>
 </resources>
